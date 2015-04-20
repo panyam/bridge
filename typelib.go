@@ -69,6 +69,13 @@ func (tl *TypeLibrary) GetType(pkg string, name string) *Type {
 	return tl.types[key]
 }
 
+func (tl *TypeLibrary) PackageByShortName(name string) string {
+	if value, ok := tl.pkgByShortName[name]; ok {
+		return value
+	}
+	return ""
+}
+
 func (tl *TypeLibrary) GetShortPackageName(pkg string) string {
 	if value, ok := tl.shortNamesForPkg[pkg]; ok {
 		return value
