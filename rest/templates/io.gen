@@ -1,0 +1,19 @@
+
+{{ $context := . }}
+
+package {{$context.ClientPackageName}}
+
+import (
+	gohttp "net/http"
+)
+
+// Request makers for each operation
+{{ range $index, $operation := .ServiceType.Fields }}
+{{ $optype := $operation.Type.TypeData }}
+
+func Deserialize{{$operation.Name}}Request(request *gohttp.Request) ({{call $context.ArgListMaker $optype.InputTypes false}}, error) {
+}
+
+func Serialize{{$operation.Name}}Response(req *gohttp.Trequest, {{call $context.ArgListMaker $optype.OutputTypes true}}) error {
+	return nil
+} {{ end }}

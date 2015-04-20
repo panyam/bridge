@@ -1,0 +1,64 @@
+
+{{ $context := . }}
+
+{{/*
+package {{$context.ClientPackageName}}
+
+import (
+	http "net/http"
+	"bytes"
+	"encoding/json"
+	"github.com/panyam/relay/bindings/gen/rest"
+)
+*/}}
+
+{{ $numInputs := .OpType.NumInputs }}
+{{ $numOutputs := .OpType.NumOutputs }}
+func (svc *{{$context.ClientName}}) Send{{.OpName}}Request({{call $context.ArgListMaker .OpType.InputTypes true }}) (resp *http.Response, error) {
+	binding := svc.httpBindings["{{.OpName}}"]
+	endpoint := binding.Endpoint({{ range $i, $f2 := .OpType.InputTypes }}{{ if gt $i 0 }}, {{end}}arg{{$i}}{{end}})
+{{ if eq $numInputs 1 }}
+	body := bytes.NewBuffer()
+	protocol.{{.OpName}}Writer(arg0)
+{{ else if gt $numInputs 1 }}
+	body := bytes.NewBuffer()
+	protocol.StartList()
+	{{ range $i, $param := .OpType.InputTypes }}
+
+	protocol.{{$param}}WritStartList()
+	{{end}} }
+	protocol.EndList()
+{{ end }}
+	httpreq, err := http.NewRequest(binding.Method, endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	httpreq.Header.Add("Content-Type", "application/json")
+	if svc.RequestDecorator != nil {
+		httpreq, err = svc.RequestDecorator(httpreq)
+		if err != nil { return nil, err }
+	}
+	c := http.Client{}
+	return c.Do(httpreq)
+}
+
+{{/* 
+// Parse the response and return the result of the service call
+func (svc *{{$context.ClientName}}) Read{{.OpName}}Response(resp *http.Response) {{ if gt $numOutputs 0 }}({{call $context.ArgListMaker .OpType.OutputTypes false }}){{ end }} {
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	decoder := json.NewDecoder(resp.Body)
+	{{ if eq $numOutputs 1 }}
+		var out {{ index .OpType.OutputTypes 0 }}.Signature
+		decoder.Decode(&arg0)
+		return out
+	{{ else if gt $numOutputs 1 }}
+		// Use an anonymous struct here!!!
+		data := { {{ range $i, $f2 := .OpType.OutputTypes }}"{{$i}}": arg{{$i}}, {{end}} }
+		json.NewEncoder(writer).Encode(data)
+	{{ end }}
+	return Deserialize{{.OpName}}Response(resp, httpreq)
+}
+
+*/}}
