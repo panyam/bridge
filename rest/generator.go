@@ -15,7 +15,7 @@ import (
 type Generator struct {
 	// where the templates are
 	Bindings     map[string]*HttpBinding
-	TypeSystem   bridge.ITypeSystem
+	TypeLibrary  bridge.ITypeLibrary
 	TemplatesDir string
 
 	// Parameters to determine Generated output
@@ -52,12 +52,12 @@ func (g *Generator) ClientName() string {
 	return g.ClientPrefix + g.ServiceName + g.ClientSuffix
 }
 
-func NewGenerator(bindings map[string]*HttpBinding, typeSys bridge.ITypeSystem, templatesDir string) *Generator {
+func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary, templatesDir string) *Generator {
 	if bindings == nil {
 		bindings = make(map[string]*HttpBinding)
 	}
 	out := Generator{Bindings: bindings,
-		TypeSystem:        typeSys,
+		TypeLibrary:       typeLib,
 		TemplatesDir:      templatesDir,
 		ClientPackageName: "restclient",
 		ClientSuffix:      "Client",
@@ -72,7 +72,7 @@ func NewGenerator(bindings map[string]*HttpBinding, typeSys bridge.ITypeSystem, 
  */
 func (g *Generator) EmitClientClass(pkgName string, serviceName string) error {
 	g.ServiceName = serviceName
-	recType := g.TypeSystem.GetType(pkgName, serviceName)
+	recType := g.TypeLibrary.GetType(pkgName, serviceName)
 	fmt.Println(" ======== PkgName, ServiceName: ", pkgName, serviceName, recType)
 	g.ServiceType = recType.TypeData.(*bridge.RecordTypeData)
 

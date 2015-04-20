@@ -5,15 +5,50 @@ import (
 	"go/parser"
 	"go/token"
 	"log"
+	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"strings"
 )
 
 type ParsedFile struct {
-	FullPath string
-	FileNode *ast.File
-	Package  string
-	Imports  map[string]string
+	FullPath    string
+	FileNode    *ast.File
+	Package     string
+	PackagePath string
+	Imports     map[string]string
+}
+
+// Given a full path to a file or folder, finds the full name of the
+// package path in one of the GOPATH or GOROOT folders
+// For example, if GOPATH contained the following folders:
+// /home/user1/a
+// /home/user1/b
+//
+// and GOROOT was:
+// /user/local/go
+//
+// and given the input full path of:
+//
+// /home/user1/a/src/github.com/theuser/repo
+//
+// would return
+//
+// github.com/theuser/repo
+//
+// as the full package path as it exists in the src folder of one of the folders
+// in GOPATH or GOROOT
+func PackagePathForFile(fullpath string) string {
+	gopath := strings.Split(os.Getenv("GOPATH"), ";")
+	folders := []string{runtime.GOROOT()}
+	folders = append(folders, gopath...)
+	for _, folder := range folders {
+		if strings.HasPrefix(fullpath, folder+"src/") {
+			return fullpath[len(folder+"src/"):]
+		}
+	}
+	return ""
 }
 
 func NewParsedFile(srcFile string) (out *ParsedFile, err error) {
@@ -28,6 +63,9 @@ func NewParsedFile(srcFile string) (out *ParsedFile, err error) {
 	if err != nil {
 		return nil, err
 	}
+	out.Package = out.FileNode.Name.Name
+	out.PackagePath = PackagePathForFile(filepath.Dir(srcFile))
+	out.Imports[out.Package] = out.PackagePath
 	for _, importSpec := range out.FileNode.Imports {
 		path := importSpec.Path.Value
 		name := ""
@@ -49,13 +87,13 @@ func NewParsedFile(srcFile string) (out *ParsedFile, err error) {
 /**
  * Parses a file and returns a map of types indexed by name.
  */
-func (parsedFile *ParsedFile) ProcessNode(typeSystem ITypeSystem) error {
+func (parsedFile *ParsedFile) ProcessNode(typeLibrary ITypeLibrary) error {
 	for _, decl := range parsedFile.FileNode.Decls {
 		gendecl, ok := decl.(*ast.GenDecl)
 		if ok && len(gendecl.Specs) > 0 {
 			typeSpec, ok := gendecl.Specs[0].(*ast.TypeSpec)
 			if ok {
-				NodeToType(typeSpec, parsedFile.FileNode.Name.Name, typeSystem)
+				parsedFile.NodeToType(typeSpec, typeLibrary)
 			}
 		}
 	}
@@ -81,12 +119,12 @@ func FindDecl(parsedFile *ast.File, declName string) *ast.GenDecl {
 /**
  * Convert a node to a type.
  */
-func NodeToType(node ast.Node, pkg string, typeSystem ITypeSystem) *Type {
+func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary) *Type {
 	switch typeExpr := node.(type) {
 	case *ast.StarExpr:
 		// we have a reference type
 		out := &Type{TypeClass: ReferenceType}
-		out.TypeData = &ReferenceTypeData{TargetType: NodeToType(typeExpr.X, pkg, typeSystem)}
+		out.TypeData = &ReferenceTypeData{TargetType: parsedFile.NodeToType(typeExpr.X, typeLibrary)}
 		return out
 	case *ast.FuncType:
 		{
@@ -96,12 +134,12 @@ func NodeToType(node ast.Node, pkg string, typeSystem ITypeSystem) *Type {
 			functionType := &FunctionTypeData{}
 			out.TypeData = functionType
 			for _, param := range typeExpr.Params.List {
-				paramType := NodeToType(param.Type, pkg, typeSystem)
+				paramType := parsedFile.NodeToType(param.Type, typeLibrary)
 				functionType.InputTypes = append(functionType.InputTypes, paramType)
 			}
 			if typeExpr.Results != nil && typeExpr.Results.List != nil {
 				for _, result := range typeExpr.Results.List {
-					resultType := NodeToType(result.Type, pkg, typeSystem)
+					resultType := parsedFile.NodeToType(result.Type, typeLibrary)
 					functionType.OutputTypes = append(functionType.OutputTypes, resultType)
 				}
 			}
@@ -109,25 +147,25 @@ func NodeToType(node ast.Node, pkg string, typeSystem ITypeSystem) *Type {
 		}
 	case *ast.MapType:
 		typeData := &MapTypeData{}
-		typeData.KeyType = NodeToType(typeExpr.Key, pkg, typeSystem)
-		typeData.ValueType = NodeToType(typeExpr.Value, pkg, typeSystem)
+		typeData.KeyType = parsedFile.NodeToType(typeExpr.Key, typeLibrary)
+		typeData.ValueType = parsedFile.NodeToType(typeExpr.Value, typeLibrary)
 		return &Type{TypeClass: MapType, TypeData: typeData}
 	case *ast.ArrayType:
 		return &Type{TypeClass: ListType,
-			TypeData: &ListTypeData{TargetType: NodeToType(typeExpr.Elt, pkg, typeSystem)}}
+			TypeData: &ListTypeData{TargetType: parsedFile.NodeToType(typeExpr.Elt, typeLibrary)}}
 	case *ast.Ident:
-		t := typeSystem.GetType(pkg, typeExpr.Name)
+		t := typeLibrary.GetType(parsedFile.PackagePath, typeExpr.Name)
 		if t == nil {
 			t = &Type{TypeClass: LazyType, TypeData: typeExpr.Name}
-			typeSystem.AddType(pkg, typeExpr.Name, t)
+			typeLibrary.AddType(parsedFile.PackagePath, typeExpr.Name, t)
 		}
 		return t
 	case *ast.SelectorExpr:
 		pkgName := typeExpr.X.(*ast.Ident).Name
-		t := typeSystem.GetType(pkgName, typeExpr.Sel.Name)
+		t := typeLibrary.GetType(parsedFile.Imports[pkgName], typeExpr.Sel.Name)
 		if t == nil {
 			t = &Type{TypeClass: LazyType, TypeData: typeExpr.Sel.Name}
-			typeSystem.AddType(pkgName, typeExpr.Sel.Name, t)
+			typeLibrary.AddType(parsedFile.Imports[pkgName], typeExpr.Sel.Name, t)
 		}
 		return t
 	case *ast.StructType:
@@ -135,7 +173,7 @@ func NodeToType(node ast.Node, pkg string, typeSystem ITypeSystem) *Type {
 			recordData := &RecordTypeData{}
 			fieldList := typeExpr.Fields.List
 			for _, field := range fieldList {
-				fieldType := NodeToType(field.Type, pkg, typeSystem)
+				fieldType := parsedFile.NodeToType(field.Type, typeLibrary)
 				// log.Println("Processing field: ", index, field.Names, field.Type, reflect.TypeOf(field.Type))
 				if len(field.Names) == 0 {
 					recordData.Bases = append(recordData.Bases, fieldType)
@@ -154,7 +192,7 @@ func NodeToType(node ast.Node, pkg string, typeSystem ITypeSystem) *Type {
 			fieldList := typeExpr.Methods.List
 			for _, field := range fieldList {
 				// log.Println("Processing method: ", index, field.Names[0], field.Type, reflect.TypeOf(field.Type))
-				fieldType := NodeToType(field.Type, pkg, typeSystem)
+				fieldType := parsedFile.NodeToType(field.Type, typeLibrary)
 				for _, fieldName := range field.Names {
 					field := &Field{Name: fieldName.Name, Type: fieldType}
 					recordData.Fields = append(recordData.Fields, field)
@@ -165,9 +203,9 @@ func NodeToType(node ast.Node, pkg string, typeSystem ITypeSystem) *Type {
 	case *ast.TypeSpec:
 		out := &Type{}
 		recordData := &RecordTypeData{Name: typeExpr.Name.Name}
-		currT := typeSystem.GetType(pkg, recordData.Name)
+		currT := typeLibrary.GetType(parsedFile.PackagePath, recordData.Name)
 		if currT == nil {
-			typeSystem.AddType(pkg, recordData.Name, out)
+			typeLibrary.AddType(parsedFile.PackagePath, recordData.Name, out)
 		} else {
 			out = currT
 			if currT.TypeClass != LazyType {
@@ -181,12 +219,12 @@ func NodeToType(node ast.Node, pkg string, typeSystem ITypeSystem) *Type {
 		switch typeExpr := typeExpr.Type.(type) {
 		case *ast.InterfaceType:
 			{
-				t2 := NodeToType(typeExpr, "", typeSystem)
+				t2 := parsedFile.NodeToType(typeExpr, typeLibrary)
 				out.TypeData = t2.TypeData
 			}
 		case *ast.StructType:
 			{
-				t2 := NodeToType(typeExpr, "", typeSystem)
+				t2 := parsedFile.NodeToType(typeExpr, typeLibrary)
 				out.TypeData = t2.TypeData
 			}
 		}

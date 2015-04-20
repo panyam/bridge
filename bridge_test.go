@@ -31,8 +31,8 @@ func (s *TestSuite) TearDownTest(c *C) {
 
 // Tests begin
 
-func (s *TestSuite) TestNewTypeSystem(c *C) {
-	ts := NewTypeSystem()
+func (s *TestSuite) TestNewTypeLibrary(c *C) {
+	ts := NewTypeLibrary()
 	c.Assert(ts, Not(IsNil))
 }
 
@@ -42,7 +42,7 @@ func (s *TestSuite) TestNewType(c *C) {
 }
 
 func (s *TestSuite) TestAddBasicType(c *C) {
-	ts := NewTypeSystem()
+	ts := NewTypeLibrary()
 	t := NewType(BasicType, nil)
 	t = ts.AddType("", "int64", t)
 	t2 := ts.GetType("", "int64")
