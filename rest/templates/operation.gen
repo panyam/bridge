@@ -8,7 +8,7 @@ import (
 	http "net/http"
 	"bytes"
 	"encoding/json"
-	"github.com/panyam/relay/bridge/gen/rest"
+	"github.com/panyam/bridge/gen/rest"
 )
 */}}
 

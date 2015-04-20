@@ -3,7 +3,6 @@ package rest
 import (
 	// "github.com/gorilla/mux"
 	"github.com/panyam/bridge"
-	"github.com/panyam/relay/utils"
 	"log"
 	"net/http"
 	"reflect"
