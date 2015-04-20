@@ -2,7 +2,7 @@ package rest
 
 import (
 	// "github.com/gorilla/mux"
-	"github.com/panyam/relay/bindings"
+	"github.com/panyam/bridge"
 	"github.com/panyam/relay/utils"
 	"log"
 	"net/http"
@@ -84,9 +84,9 @@ func NewHttpBinding(url string, methods []string, service interface{}, operation
  *
  * 	/path1/path2/{param1:Request.Field1}/path3/{param2:Request.Field2}/
  */
-func (hb *HttpBinding) ExtractRequest(request *http.Request) (*bindings.ServiceOperation, error) {
+func (hb *HttpBinding) ExtractRequest(request *http.Request) (*bridge.ServiceOperation, error) {
 	param := reflect.New(hb.RequestType)
-	out := bindings.ServiceOperation{Method: hb.Method, RequestParam: param}
+	out := bridge.ServiceOperation{Method: hb.Method, RequestParam: param}
 
 	// variables = mux.Vars(request)
 	return &out, nil
@@ -97,7 +97,7 @@ type HttpInputBinder struct {
 	Bindings []*HttpBinding
 }
 
-func (h *HttpInputBinder) ExtractInput(transportRequest interface{}) (*bindings.ServiceOperation, error) {
+func (h *HttpInputBinder) ExtractInput(transportRequest interface{}) (*bridge.ServiceOperation, error) {
 	request := transportRequest.(*http.Request)
 	binding := h.MatchBinding(request)
 	// then extract the operation items

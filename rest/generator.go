@@ -3,7 +3,7 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"github.com/panyam/relay/bindings"
+	"github.com/panyam/bridge"
 	"io"
 	"os"
 	"text/template"
@@ -15,7 +15,7 @@ import (
 type Generator struct {
 	// where the templates are
 	Bindings     map[string]*HttpBinding
-	TypeSystem   bindings.ITypeSystem
+	TypeSystem   bridge.ITypeSystem
 	TemplatesDir string
 
 	// Parameters to determine Generated output
@@ -25,16 +25,16 @@ type Generator struct {
 	ClientPrefix      string
 	ClientSuffix      string
 	httpBindings      map[string]*HttpBinding
-	ArgListMaker      func([]*bindings.Type, bool) string
-	ServiceType       *bindings.RecordTypeData
+	ArgListMaker      func([]*bridge.Type, bool) string
+	ServiceType       *bridge.RecordTypeData
 	TransportRequest  string
 	OpName            string
-	OpType            *bindings.FunctionTypeData
+	OpType            *bridge.FunctionTypeData
 	OpMethod          string
 	OpEndpoint        string
 }
 
-func ArgListMaker(paramTypes []*bindings.Type, withNames bool) string {
+func ArgListMaker(paramTypes []*bridge.Type, withNames bool) string {
 	out := ""
 	for index, param := range paramTypes {
 		if index > 0 {
@@ -52,7 +52,7 @@ func (g *Generator) ClientName() string {
 	return g.ClientPrefix + g.ServiceName + g.ClientSuffix
 }
 
-func NewGenerator(bindings map[string]*HttpBinding, typeSys bindings.ITypeSystem, templatesDir string) *Generator {
+func NewGenerator(bindings map[string]*HttpBinding, typeSys bridge.ITypeSystem, templatesDir string) *Generator {
 	if bindings == nil {
 		bindings = make(map[string]*HttpBinding)
 	}
@@ -74,7 +74,7 @@ func (g *Generator) EmitClientClass(pkgName string, serviceName string) error {
 	g.ServiceName = serviceName
 	recType := g.TypeSystem.GetType(pkgName, serviceName)
 	fmt.Println(" ======== PkgName, ServiceName: ", pkgName, serviceName, recType)
-	g.ServiceType = recType.TypeData.(*bindings.RecordTypeData)
+	g.ServiceType = recType.TypeData.(*bridge.RecordTypeData)
 
 	tmpl, err := template.New("client.gen").ParseFiles(g.TemplatesDir + "client.gen")
 	if err != nil {
@@ -94,7 +94,7 @@ func (g *Generator) EmitClientClass(pkgName string, serviceName string) error {
  * 3. Sends the transport level request
  * 4. Gets a response from the transport level and returns it
  */
-func (g *Generator) EmitSendRequestMethod(output io.Writer, opName string, opType *bindings.FunctionTypeData, argPrefix string) error {
+func (g *Generator) EmitSendRequestMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
 	g.OpName = opName
 	g.OpType = opType
 	g.OpMethod = "GET"
@@ -115,7 +115,7 @@ func (g *Generator) EmitSendRequestMethod(output io.Writer, opName string, opTyp
 	return nil
 }
 
-func (g *Generator) StartWritingMethod(output io.Writer, opName string, opType *bindings.FunctionTypeData, argPrefix string) error {
+func (g *Generator) StartWritingMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
 	templ, err := template.New("writer").Parse(`
 func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{call .ArgListMaker .OpType.InputTypes true }}) (*http.Response, error) {
 	var body *bytes.Buffer = {{ if eq .OpType.NumInputs 0 }}nil{{else}}bytes.NewBuffer(nil){{end}}
@@ -130,7 +130,7 @@ func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{call .ArgListMaker .OpType
 	return err
 }
 
-func (g *Generator) EndWritingMethod(output io.Writer, opName string, opType *bindings.FunctionTypeData) error {
+func (g *Generator) EndWritingMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData) error {
 	templ, err := template.New("writer").Parse(`
 	httpreq, err := http.NewRequest("{{.OpMethod}}", "{{.OpEndpoint}}", body)
 	if err != nil {
@@ -155,24 +155,24 @@ func (g *Generator) EndWritingMethod(output io.Writer, opName string, opType *bi
 	return err
 }
 
-func WriterMethodForType(t *bindings.Type) string {
+func WriterMethodForType(t *bridge.Type) string {
 	switch typeData := t.TypeData.(type) {
 	case string:
 		return "Write_" + typeData
-	case *bindings.AliasTypeData:
+	case *bridge.AliasTypeData:
 		return WriterMethodForType(typeData.AliasFor)
-	case *bindings.ReferenceTypeData:
+	case *bridge.ReferenceTypeData:
 		return WriterMethodForType(typeData.TargetType)
-	case *bindings.FunctionTypeData:
+	case *bridge.FunctionTypeData:
 		panic(errors.New("Function types not supported in GO"))
-	case *bindings.TupleTypeData:
+	case *bridge.TupleTypeData:
 		panic(errors.New("Warning: Tuple types not supported in GO"))
 		return "Write_Tuple"
-	case *bindings.RecordTypeData:
+	case *bridge.RecordTypeData:
 		return "Write_" + typeData.Name
-	case *bindings.MapTypeData:
+	case *bridge.MapTypeData:
 		return "Write_Map"
-	case *bindings.ListTypeData:
+	case *bridge.ListTypeData:
 		return "Write_List"
 	}
 	return "UnknownWriter"
@@ -182,7 +182,7 @@ func WriterMethodForType(t *bindings.Type) string {
  * Emits the code required to invoke the serializer of an object of a given
  * type.
  */
-func (g *Generator) EmitObjectWriterCall(output io.Writer, key interface{}, argName string, argType *bindings.Type) error {
+func (g *Generator) EmitObjectWriterCall(output io.Writer, key interface{}, argName string, argType *bridge.Type) error {
 	callString := WriterMethodForType(argType)
 	output.Write([]byte(callString + "(body, " + argName + ")\n"))
 	return nil
@@ -209,7 +209,7 @@ func (g *Generator) EndWritingList(output io.Writer) {
  * 	  operations's output signature
  */
 /*
-func (g *Generator) EmitReadResponseMethod(opName string, opType *bindings.FunctionTypeData, argPrefix string) error {
+func (g *Generator) EmitReadResponseMethod(opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
 	g.StartReadingMethod(opName, opType, "arg")
 	if opType.NumOutputs() > 0 {
 		if opType.NumOutputs() == 1 {

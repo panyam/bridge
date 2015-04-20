@@ -1,11 +1,11 @@
 package rest
 
 import (
-	"github.com/panyam/relay/bindings"
+	"github.com/panyam/bridge"
 )
 
 type RestProtocol struct {
 }
 
-func (protocl *RestProtocol) WriteReadResponseMethod(opName string, opType *bindings.FunctionTypeData) {
+func (protocl *RestProtocol) WriteReadResponseMethod(opName string, opType *bridge.FunctionTypeData) {
 }

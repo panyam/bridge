@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/panyam/relay/bindings"
-	// "github.com/panyam/relay/bindings/rest"
+	"github.com/panyam/bridge"
+	// "github.com/panyam/bridge/rest"
 	// "os"
 	"log"
 )
@@ -20,10 +20,10 @@ func main() {
 		log.Println("Service required")
 	}
 
-	typeSystem := bindings.NewTypeSystem()
-	parsedFiles := make(map[string]*bindings.ParsedFile)
+	typeSystem := bridge.NewTypeSystem()
+	parsedFiles := make(map[string]*bridge.ParsedFile)
 	for _, srcFile := range flag.Args() {
-		pf, err := bindings.NewParsedFile(srcFile)
+		pf, err := bridge.NewParsedFile(srcFile)
 		if err != nil {
 			log.Println("Parsing error: ", err)
 			return
@@ -57,7 +57,7 @@ func main() {
 		// Generate code for each of the service methods
 		for _, field := range generator.ServiceType.Fields {
 			switch optype := field.Type.TypeData.(type) {
-			case *bindings.FunctionTypeData:
+			case *bridge.FunctionTypeData:
 				generator.EmitSendRequestMethod(os.Stdout, field.Name, optype, "arg")
 			}
 		}
