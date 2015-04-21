@@ -6,6 +6,7 @@ const (
 	NullType = iota
 	UnresolvedType
 	BasicType
+	ExternalType
 	AliasType
 	ReferenceType
 	TupleType
@@ -24,6 +25,11 @@ type Type struct {
 
 func NewType(typeCls int, data interface{}) *Type {
 	return &Type{TypeClass: typeCls, TypeData: data}
+}
+
+type ExternalTypeData struct {
+	Package string
+	Name    string
 }
 
 type AliasTypeData struct {

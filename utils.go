@@ -180,10 +180,14 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 		pkgName := typeExpr.X.(*ast.Ident).Name
 		t := typeLibrary.GetType(parsedFile.Imports[pkgName], typeExpr.Sel.Name)
 		if t == nil {
-			t = &Type{TypeClass: UnresolvedType, TypeData: typeExpr.Sel.Name}
 			// Here there wont be any ambiguities as the package name will exist
 			// or it wont.  if it doesnt then it is just an error
-			typeLibrary.AddType(parsedFile.Imports[pkgName], typeExpr.Sel.Name, t)
+			fullPkgName := parsedFile.Imports[pkgName]
+			if fullPkgName == "" {
+				fullPkgName = pkgName
+			}
+			t = &Type{TypeClass: ExternalType, TypeData: &ExternalTypeData{fullPkgName, typeExpr.Sel.Name}}
+			typeLibrary.AddType(fullPkgName, typeExpr.Sel.Name, t)
 		}
 		return t
 	case *ast.StructType:

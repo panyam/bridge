@@ -2,7 +2,6 @@ package restclient
 
 import (
 	"bytes"
-	"github.com/panyam/relay/services/msg/core"
 	"net/http"
 )
 
@@ -11,9 +10,12 @@ type IUserServiceClient struct {
 	RequestDecorator func(req *http.Request) (*http.Request, error)
 }
 
-func (svc *IUserServiceClient) SendRemoveAllUsersRequest(arg0 *core.Request) (*http.Response, error) {
+func (svc *IUserServiceClient) SendRemoveAllUsersRequest(arg0 *core.Request, arg1 time.Time) (*http.Response, error) {
 	var body *bytes.Buffer = bytes.NewBuffer(nil)
+	body.Write([]byte("["))
 	Write_Request(body, arg0)
+	UnknownWriter(body, arg1)
+	body.Write([]byte("]"))
 
 	httpreq, err := http.NewRequest("GET", "http://hello.world/", body)
 	if err != nil {

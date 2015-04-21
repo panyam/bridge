@@ -155,6 +155,9 @@ func (tl *TypeLibrary) Signature(t *Type) string {
 		return t.TypeData.(string)
 	case BasicType:
 		return t.TypeData.(string)
+	case ExternalType:
+		data := t.TypeData.(*ExternalTypeData)
+		return data.Package + "." + data.Name
 	case AliasType:
 		return t.TypeData.(string)
 	case ReferenceType:
