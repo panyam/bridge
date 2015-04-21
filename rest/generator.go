@@ -25,7 +25,7 @@ type Generator struct {
 	ClientPrefix      string
 	ClientSuffix      string
 	httpBindings      map[string]*HttpBinding
-	ServiceType       *bridge.RecordTypeData
+	ServiceType       *bridge.Type
 	TransportRequest  string
 	OpName            string
 	OpType            *bridge.FunctionTypeData
@@ -35,6 +35,10 @@ type Generator struct {
 
 func (g *Generator) ClientName() string {
 	return g.ClientPrefix + g.ServiceName + g.ClientSuffix
+}
+
+func (g *Generator) ServiceTypeData() *bridge.RecordTypeData {
+	return g.ServiceType.TypeData.(*bridge.RecordTypeData)
 }
 
 func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary, templatesDir string) *Generator {
@@ -54,9 +58,13 @@ func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary,
 /**
  * Emits the class that acts as a client for the service.
  */
-func (g *Generator) EmitClientClass(serviceType *bridge.RecordTypeData) error {
+func (g *Generator) EmitClientClass(serviceType *bridge.Type) error {
+	serviceTypeData, ok := serviceType.TypeData.(*bridge.RecordTypeData)
+	if !ok {
+		return errors.New("Can only classes for record/container types")
+	}
 	g.ServiceType = serviceType
-	g.ServiceName = serviceType.Name
+	g.ServiceName = serviceTypeData.Name
 
 	tmpl, err := template.New("client.gen").ParseFiles(g.TemplatesDir + "client.gen")
 	if err != nil {

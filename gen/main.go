@@ -61,12 +61,9 @@ func main() {
 
 	generator := rest.NewGenerator(nil, typeLibrary, "../rest/templates/")
 	serviceType := typeLibrary.GetType("core", serviceName)
-	if serviceType.TypeClass != bridge.RecordType {
-		log.Println("Invalid service ttype: ", serviceType)
-	} else {
-		serviceTypeData := serviceType.TypeData.(*bridge.RecordTypeData)
-		generator.EmitClientClass(serviceTypeData)
-
+	err := generator.EmitClientClass(serviceType)
+	if err == nil {
+		serviceTypeData := generator.ServiceTypeData()
 		// Generate code for each of the service methods
 		for _, field := range serviceTypeData.Fields {
 			switch optype := field.Type.TypeData.(type) {
@@ -74,5 +71,7 @@ func main() {
 				generator.EmitSendRequestMethod(os.Stdout, field.Name, optype, "arg")
 			}
 		}
+	} else {
+		log.Println("Class emitting error: ", err)
 	}
 }

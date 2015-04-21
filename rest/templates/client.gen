@@ -5,12 +5,10 @@ package {{$context.ClientPackageName}}
 import (
 	"net/http"
 	"bytes"
-	"github.com/panyam/bridge/rest"
 )
 
 type {{$context.ClientName}} struct {
-	service *{{$context.ServiceName}}
+	service {{.TypeLib.Signature $context.ServiceType}}
 	RequestDecorator func(req *http.Request) (*http.Request, error)
-	httpBindings map[string]*rest.HttpBinding
 }
 

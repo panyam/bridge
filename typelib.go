@@ -140,7 +140,7 @@ func (tl *TypeLibrary) PackageByShortName(name string) string {
 	return ""
 }
 
-func (tl *TypeLibrary) GetShortPackageName(pkg string) string {
+func (tl *TypeLibrary) ShortNameForPackage(pkg string) string {
 	if value, ok := tl.shortNamesForPkg[pkg]; ok {
 		return value
 	}
@@ -160,7 +160,12 @@ func (tl *TypeLibrary) Signature(t *Type) string {
 	case ReferenceType:
 		return "*" + tl.Signature(t.TypeData.(*ReferenceTypeData).TargetType)
 	case RecordType:
-		return t.TypeData.(*RecordTypeData).Name
+		recordType := t.TypeData.(*RecordTypeData)
+		if recordType.Package == "" {
+			return recordType.Name
+		} else {
+			return tl.ShortNameForPackage(recordType.Package) + "." + recordType.Name
+		}
 	case TupleType:
 		out := "("
 		for index, childType := range t.TypeData.(*TupleTypeData).SubTypes {
@@ -172,8 +177,7 @@ func (tl *TypeLibrary) Signature(t *Type) string {
 		return out
 	case FunctionType:
 		funcTypeData := t.TypeData.(*FunctionTypeData)
-		out := "func ("
-		out += tl.TypeListSignature(funcTypeData.InputTypes, "") + ")"
+		out := "func (" + tl.TypeListSignature(funcTypeData.InputTypes, "") + ")"
 		if funcTypeData.OutputTypes != nil {
 			out += "(" + tl.TypeListSignature(funcTypeData.OutputTypes, "") + ")"
 		}
