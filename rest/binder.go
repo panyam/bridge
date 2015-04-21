@@ -49,8 +49,8 @@ type HttpBinding struct {
 
 func NewHttpBinding(url string, methods []string, service interface{}, operation string) *HttpBinding {
 	out := HttpBinding{Url: url, Methods: methods, Service: service, Operation: operation}
-	out.Method = utils.GetMethod(service, operation)
-	out.RequestTypeIsPtr, out.RequestType = utils.GetParamType(out.Method, 0)
+	//out.Method = utils.GetMethod(service, operation)
+	// out.RequestTypeIsPtr, out.RequestType = utils.GetParamType(out.Method, 0)
 	if out.RequestType != nil {
 		return &out
 	}

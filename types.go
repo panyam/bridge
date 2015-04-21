@@ -1,8 +1,10 @@
 package bridge
 
+import ()
+
 const (
 	NullType = iota
-	LazyType
+	UnresolvedType
 	BasicType
 	AliasType
 	ReferenceType
@@ -52,9 +54,10 @@ type TupleTypeData struct {
 
 type RecordTypeData struct {
 	// Type of each member in the struct
-	Name   string
-	Bases  []*Type
-	Fields []*Field
+	Name    string
+	Package string
+	Bases   []*Type
+	Fields  []*Field
 }
 
 func (td *RecordTypeData) NumFields() int {
@@ -91,61 +94,4 @@ func (td *FunctionTypeData) NumOutputs() int {
 
 func (td *FunctionTypeData) NumExceptions() int {
 	return len(td.ExceptionTypes)
-}
-
-func (t *Type) Signature() string {
-	switch t.TypeClass {
-	case NullType:
-		return ""
-	case LazyType:
-		return t.TypeData.(string)
-	case BasicType:
-		return t.TypeData.(string)
-	case AliasType:
-		return t.TypeData.(string)
-	case ReferenceType:
-		return "*" + t.TypeData.(*ReferenceTypeData).TargetType.Signature()
-	case RecordType:
-		return t.TypeData.(*RecordTypeData).Name
-	case TupleType:
-		out := "("
-		for index, childType := range t.TypeData.(*TupleTypeData).SubTypes {
-			if index > 0 {
-				out += ", "
-			}
-			out += childType.Signature()
-		}
-		return out
-	case FunctionType:
-		funcTypeData := t.TypeData.(*FunctionTypeData)
-		out := "func"
-		out += TypeListSignature(funcTypeData.InputTypes)
-		if funcTypeData.OutputTypes != nil {
-			out += TypeListSignature(funcTypeData.OutputTypes)
-		}
-		if funcTypeData.ExceptionTypes != nil {
-			out += " throws" + TypeListSignature(funcTypeData.ExceptionTypes)
-		}
-		return out
-	case ListType:
-		return "[]" + t.TypeData.(*ListTypeData).TargetType.Signature()
-	case MapType:
-		mapTypeData := t.TypeData.(*MapTypeData)
-		return "map[" + mapTypeData.KeyType.Signature() + "]" + mapTypeData.ValueType.Signature()
-	}
-	return ""
-}
-
-func TypeListSignature(types []*Type) string {
-	out := " ("
-	if types != nil {
-		for index, inType := range types {
-			if index > 0 {
-				out += ","
-			}
-			out += inType.Signature()
-		}
-	}
-	out += ")"
-	return out
 }

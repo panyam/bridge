@@ -78,7 +78,7 @@ func NewParsedFile(srcFile string) (out *ParsedFile, err error) {
 		if name == "." {
 			log.Println("Not sure how to deal with . imports", path)
 		} else {
-			out.Imports[name] = path
+			out.Imports[name] = strings.Replace(path, "\"", "", -1)
 		}
 	}
 	return out, err
@@ -154,9 +154,25 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 		return &Type{TypeClass: ListType,
 			TypeData: &ListTypeData{TargetType: parsedFile.NodeToType(typeExpr.Elt, typeLibrary)}}
 	case *ast.Ident:
-		t := typeLibrary.GetType(parsedFile.PackagePath, typeExpr.Name)
+		// Here we are adding a type without a localname prefix.  This means
+		// the type could either be in this package itself or could be a
+		// basic type or could actually be imported implicitly (via ".").
+		// So check for each of the cases
+		var t *Type = typeLibrary.GetBasicType(typeExpr.Name)
+
+		// case 1: typeExpr.Name refers to a basic type
+		if t != nil {
+			return t
+		}
+
+		// case 2: not a basic type so could be a type in this lib or imported
+		// implicitly.  So create a lazy type which will only get resolved if we
+		// encounter a type def
+		// Case 2: Not a basic type so see if we have a previous definition
+		t = typeLibrary.GetType(parsedFile.PackagePath, typeExpr.Name)
 		if t == nil {
-			t = &Type{TypeClass: LazyType, TypeData: typeExpr.Name}
+			// Case 3: No previous def, so create a lazy type
+			t = &Type{TypeClass: UnresolvedType, TypeData: typeExpr.Name}
 			typeLibrary.AddType(parsedFile.PackagePath, typeExpr.Name, t)
 		}
 		return t
@@ -164,7 +180,9 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 		pkgName := typeExpr.X.(*ast.Ident).Name
 		t := typeLibrary.GetType(parsedFile.Imports[pkgName], typeExpr.Sel.Name)
 		if t == nil {
-			t = &Type{TypeClass: LazyType, TypeData: typeExpr.Sel.Name}
+			t = &Type{TypeClass: UnresolvedType, TypeData: typeExpr.Sel.Name}
+			// Here there wont be any ambiguities as the package name will exist
+			// or it wont.  if it doesnt then it is just an error
 			typeLibrary.AddType(parsedFile.Imports[pkgName], typeExpr.Sel.Name, t)
 		}
 		return t
@@ -201,33 +219,25 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 			return &Type{TypeClass: RecordType, TypeData: recordData}
 		}
 	case *ast.TypeSpec:
-		out := &Type{}
-		recordData := &RecordTypeData{Name: typeExpr.Name.Name}
-		currT := typeLibrary.GetType(parsedFile.PackagePath, recordData.Name)
-		if currT == nil {
-			typeLibrary.AddType(parsedFile.PackagePath, recordData.Name, out)
-		} else {
-			out = currT
-			if currT.TypeClass != LazyType {
-				// what if it already exists?
-				log.Println("ERROR: Redefinition of type: ", recordData.Name, currT.TypeClass)
+		recordData := &RecordTypeData{Name: typeExpr.Name.Name, Package: parsedFile.PackagePath}
+		// Check if we have a "lazy" type for this package/name combo
+		out := typeLibrary.GetType(parsedFile.PackagePath, recordData.Name)
+		if out != nil {
+			if out.TypeClass != UnresolvedType {
+				// Redefinition of type
+				// TODO: throw errors
+				log.Println("ERROR: Redefinition of type: ", recordData.Name, out.TypeClass)
 			}
+		} else {
+			// Previous declaration neither exists nor is lazy so add it
+			// fearlessly
+			out = &Type{}
+			typeLibrary.AddType(parsedFile.PackagePath, recordData.Name, out)
 		}
 		out.TypeClass = RecordType
 		out.TypeData = recordData
-
-		switch typeExpr := typeExpr.Type.(type) {
-		case *ast.InterfaceType:
-			{
-				t2 := parsedFile.NodeToType(typeExpr, typeLibrary)
-				out.TypeData = t2.TypeData
-			}
-		case *ast.StructType:
-			{
-				t2 := parsedFile.NodeToType(typeExpr, typeLibrary)
-				out.TypeData = t2.TypeData
-			}
-		}
+		childTypeData := parsedFile.NodeToType(typeExpr.Type, typeLibrary).TypeData
+		recordData.Fields = childTypeData.(*RecordTypeData).Fields
 		return out
 	}
 	log.Println("Damn - the wrong type: ", node, reflect.TypeOf(node))

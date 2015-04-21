@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"github.com/panyam/bridge"
-	// "github.com/panyam/bridge/rest"
+	"github.com/panyam/bridge/rest"
 	"log"
+	"os"
 )
 
 func main() {
@@ -37,7 +38,8 @@ func main() {
 		parsedFile.ProcessNode(typeLibrary)
 	}
 
-	log.Println("TS: ", typeLibrary)
+	// Report unresolved types
+
 	/*
 		var parsedFile *ast.File = nil
 		fset := token.NewFileSet() // positions are relative to fset
@@ -50,17 +52,27 @@ func main() {
 		log.Println("UnResolved: ", parsedFile.Unresolved)
 	*/
 
-	/*
-		generator := rest.NewGenerator(nil, typeLibrary, "../rest/templates/")
+	typeLibrary.ForEach(func(name string, t *bridge.Type) bool {
+		if t.TypeClass == bridge.UnresolvedType {
+			log.Println("Unresolved Type: ", name, t.TypeData)
+		}
+		return false
+	})
 
-		generator.EmitClientClass(parsedFile.Name.Name, serviceName)
+	generator := rest.NewGenerator(nil, typeLibrary, "../rest/templates/")
+	serviceType := typeLibrary.GetType("core", serviceName)
+	if serviceType.TypeClass != bridge.RecordType {
+		log.Println("Invalid service ttype: ", serviceType)
+	} else {
+		serviceTypeData := serviceType.TypeData.(*bridge.RecordTypeData)
+		generator.EmitClientClass(serviceTypeData)
 
 		// Generate code for each of the service methods
-		for _, field := range generator.ServiceType.Fields {
+		for _, field := range serviceTypeData.Fields {
 			switch optype := field.Type.TypeData.(type) {
 			case *bridge.FunctionTypeData:
 				generator.EmitSendRequestMethod(os.Stdout, field.Name, optype, "arg")
 			}
 		}
-	*/
+	}
 }

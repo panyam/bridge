@@ -15,7 +15,7 @@ import (
 type Generator struct {
 	// where the templates are
 	Bindings     map[string]*HttpBinding
-	TypeLibrary  bridge.ITypeLibrary
+	TypeLib      bridge.ITypeLibrary
 	TemplatesDir string
 
 	// Parameters to determine Generated output
@@ -25,27 +25,12 @@ type Generator struct {
 	ClientPrefix      string
 	ClientSuffix      string
 	httpBindings      map[string]*HttpBinding
-	ArgListMaker      func([]*bridge.Type, bool) string
 	ServiceType       *bridge.RecordTypeData
 	TransportRequest  string
 	OpName            string
 	OpType            *bridge.FunctionTypeData
 	OpMethod          string
 	OpEndpoint        string
-}
-
-func ArgListMaker(paramTypes []*bridge.Type, withNames bool) string {
-	out := ""
-	for index, param := range paramTypes {
-		if index > 0 {
-			out += ", "
-		}
-		if withNames {
-			out += fmt.Sprintf("arg%d ", index)
-		}
-		out += param.Signature()
-	}
-	return out
 }
 
 func (g *Generator) ClientName() string {
@@ -57,12 +42,11 @@ func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary,
 		bindings = make(map[string]*HttpBinding)
 	}
 	out := Generator{Bindings: bindings,
-		TypeLibrary:       typeLib,
+		TypeLib:           typeLib,
 		TemplatesDir:      templatesDir,
 		ClientPackageName: "restclient",
 		ClientSuffix:      "Client",
 		TransportRequest:  "*http.Request",
-		ArgListMaker:      ArgListMaker,
 	}
 	return &out
 }
@@ -70,11 +54,9 @@ func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary,
 /**
  * Emits the class that acts as a client for the service.
  */
-func (g *Generator) EmitClientClass(pkgName string, serviceName string) error {
-	g.ServiceName = serviceName
-	recType := g.TypeLibrary.GetType(pkgName, serviceName)
-	fmt.Println(" ======== PkgName, ServiceName: ", pkgName, serviceName, recType)
-	g.ServiceType = recType.TypeData.(*bridge.RecordTypeData)
+func (g *Generator) EmitClientClass(serviceType *bridge.RecordTypeData) error {
+	g.ServiceType = serviceType
+	g.ServiceName = serviceType.Name
 
 	tmpl, err := template.New("client.gen").ParseFiles(g.TemplatesDir + "client.gen")
 	if err != nil {
@@ -117,7 +99,7 @@ func (g *Generator) EmitSendRequestMethod(output io.Writer, opName string, opTyp
 
 func (g *Generator) StartWritingMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
 	templ, err := template.New("writer").Parse(`
-func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{call .ArgListMaker .OpType.InputTypes true }}) (*http.Response, error) {
+func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) (*http.Response, error) {
 	var body *bytes.Buffer = {{ if eq .OpType.NumInputs 0 }}nil{{else}}bytes.NewBuffer(nil){{end}}
 	`)
 	if err != nil {

@@ -7,7 +7,7 @@ type Generator interface {
 	/**
 	 * Emits the class that acts as a client for the service.
 	 */
-	EmitClientClass(pkgName string, serviceName string) error
+	EmitClientClass(serviceType *RecordTypeData) error
 
 	/**
 	 * For a given service operation, emits a method which:

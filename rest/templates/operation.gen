@@ -14,7 +14,7 @@ import (
 
 {{ $numInputs := .OpType.NumInputs }}
 {{ $numOutputs := .OpType.NumOutputs }}
-func (svc *{{$context.ClientName}}) Send{{.OpName}}Request({{call $context.ArgListMaker .OpType.InputTypes true }}) (resp *http.Response, error) {
+func (svc *{{$context.ClientName}}) Send{{.OpName}}Request({{call $context.TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) (resp *http.Response, error) {
 	binding := svc.httpBindings["{{.OpName}}"]
 	endpoint := binding.Endpoint({{ range $i, $f2 := .OpType.InputTypes }}{{ if gt $i 0 }}, {{end}}arg{{$i}}{{end}})
 {{ if eq $numInputs 1 }}
@@ -44,7 +44,7 @@ func (svc *{{$context.ClientName}}) Send{{.OpName}}Request({{call $context.ArgLi
 
 {{/* 
 // Parse the response and return the result of the service call
-func (svc *{{$context.ClientName}}) Read{{.OpName}}Response(resp *http.Response) {{ if gt $numOutputs 0 }}({{call $context.ArgListMaker .OpType.OutputTypes false }}){{ end }} {
+func (svc *{{$context.ClientName}}) Read{{.OpName}}Response(resp *http.Response) {{ if gt $numOutputs 0 }}({{call $context.TypeLib.TypeListSignature .OpType.OutputTypes "" }}){{ end }} {
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}

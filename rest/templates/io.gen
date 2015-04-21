@@ -11,9 +11,9 @@ import (
 {{ range $index, $operation := .ServiceType.Fields }}
 {{ $optype := $operation.Type.TypeData }}
 
-func Deserialize{{$operation.Name}}Request(request *gohttp.Request) ({{call $context.ArgListMaker $optype.InputTypes false}}, error) {
+func Deserialize{{$operation.Name}}Request(request *gohttp.Request) ({{call $context.TypeLib.TypeListSignature $optype.InputTypes ""}}, error) {
 }
 
-func Serialize{{$operation.Name}}Response(req *gohttp.Trequest, {{call $context.ArgListMaker $optype.OutputTypes true}}) error {
+func Serialize{{$operation.Name}}Response(req *gohttp.Trequest, {{call $context.TypeLib.TypeListSignature $optype.OutputTypes  "arg%d"}}) error {
 	return nil
 } {{ end }}
