@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/panyam/bridge"
 	"io"
-	"os"
 	"text/template"
 )
 
@@ -58,7 +57,7 @@ func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary,
 /**
  * Emits the class that acts as a client for the service.
  */
-func (g *Generator) EmitClientClass(serviceType *bridge.Type) error {
+func (g *Generator) EmitClientClass(writer io.Writer, serviceType *bridge.Type) error {
 	serviceTypeData, ok := serviceType.TypeData.(*bridge.RecordTypeData)
 	if !ok {
 		return errors.New("Can only classes for record/container types")
@@ -70,7 +69,7 @@ func (g *Generator) EmitClientClass(serviceType *bridge.Type) error {
 	if err != nil {
 		panic(err)
 	}
-	err = tmpl.Execute(os.Stdout, g)
+	err = tmpl.Execute(writer, g)
 	if err != nil {
 		panic(err)
 	}
@@ -145,27 +144,37 @@ func (g *Generator) EndWritingMethod(output io.Writer, opName string, opType *br
 	return err
 }
 
-func WriterMethodForType(t *bridge.Type) string {
+func (g *Generator) IOMethodForType(t *bridge.Type) string {
 	switch typeData := t.TypeData.(type) {
 	case string:
-		return "Write_" + typeData
+		return typeData
+	case *bridge.NamedTypeData:
+		if typeData.Package == "" {
+			return typeData.Name
+		} else {
+			return g.TypeLib.ShortNameForPackage(typeData.Package) + "_" + typeData.Name
+		}
 	case *bridge.AliasTypeData:
-		return WriterMethodForType(typeData.AliasFor)
+		return g.IOMethodForType(typeData.AliasFor)
 	case *bridge.ReferenceTypeData:
-		return WriterMethodForType(typeData.TargetType)
+		return "Ref_" + g.IOMethodForType(typeData.TargetType)
 	case *bridge.FunctionTypeData:
-		panic(errors.New("Function types not supported in GO"))
+		panic(errors.New("Function types cannot be serialized"))
 	case *bridge.TupleTypeData:
 		panic(errors.New("Warning: Tuple types not supported in GO"))
-		return "Write_Tuple"
+		return "Tuple"
 	case *bridge.RecordTypeData:
-		return "Write_" + typeData.Name
+		if typeData.Package == "" {
+			return typeData.Name
+		} else {
+			return g.TypeLib.ShortNameForPackage(typeData.Package) + "_" + typeData.Name
+		}
 	case *bridge.MapTypeData:
-		return "Write_Map"
+		return "Map_" + g.IOMethodForType(typeData.KeyType) + "_" + g.IOMethodForType(typeData.ValueType)
 	case *bridge.ListTypeData:
-		return "Write_List"
+		return "List_" + g.IOMethodForType(typeData.TargetType)
 	}
-	return "UnknownWriter"
+	return fmt.Sprintf("UnknownWriter, Type: %d", t.TypeClass)
 }
 
 /**
@@ -173,8 +182,8 @@ func WriterMethodForType(t *bridge.Type) string {
  * type.
  */
 func (g *Generator) EmitObjectWriterCall(output io.Writer, key interface{}, argName string, argType *bridge.Type) error {
-	callString := WriterMethodForType(argType)
-	output.Write([]byte(callString + "(body, " + argName + ")\n"))
+	callString := g.IOMethodForType(argType)
+	output.Write([]byte("Write_" + callString + "(body, " + argName + ")\n"))
 	return nil
 }
 
@@ -190,6 +199,23 @@ func (g *Generator) StartWritingList(output io.Writer) {
  */
 func (g *Generator) EndWritingList(output io.Writer) {
 	output.Write([]byte("body.Write([]byte(\"]\"))\n"))
+}
+
+/**
+ * Emits the writer for a particular type and in the process returns via the
+ * recorder the types that for which writers must or will be defined.
+ */
+func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type, visited map[*bridge.Type]bool) error {
+	fmt.Println("Type: ", argType.TypeClass)
+	tmpl, err := template.New("writers.gen").ParseFiles(g.TemplatesDir + "writers.gen")
+	if err != nil {
+		panic(err)
+	}
+	err = tmpl.Execute(writer, map[string]interface{}{"Gen": g, "Type": argType, "Visited": visited})
+	if err != nil {
+		panic(err)
+	}
+	return err
 }
 
 /**

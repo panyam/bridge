@@ -9,16 +9,19 @@ import (
 type ITypeLibrary interface {
 	AddType(pkg string, name string, t *Type) (alt *Type)
 	GetType(pkg string, name string) *Type
-	AddBasicType(name string) (alt *Type)
-	GetBasicType(name string) (alt *Type)
+	AddGlobalType(name string) (alt *Type)
+	GetGlobalType(name string) (alt *Type)
 
 	// Package related API
 	AddPackage(name string) (shortName string)
-	ForEach(func(string, *Type) bool)
+	ForEach(func(string, *Type, *bool))
 
 	// Signature string creation
 	Signature(t *Type) string
 	TypeListSignature(types []*Type, argfmt string) string
+
+	PackageByShortName(name string) string
+	ShortNameForPackage(pkg string) string
 }
 
 type TypeLibrary struct {
@@ -41,42 +44,44 @@ func NewTypeLibrary() *TypeLibrary {
 	out.types = make(map[string]*Type)
 
 	// add some basic types
-	out.AddBasicType("error")
-	out.AddBasicType("string")
-	out.AddBasicType("float")
-	out.AddBasicType("float32")
-	out.AddBasicType("float64")
-	out.AddBasicType("bool")
-	out.AddBasicType("byte")
-	out.AddBasicType("int")
-	out.AddBasicType("int8")
-	out.AddBasicType("int16")
-	out.AddBasicType("int32")
-	out.AddBasicType("int64")
-	out.AddBasicType("uint")
-	out.AddBasicType("uint8")
-	out.AddBasicType("uint16")
-	out.AddBasicType("uint32")
-	out.AddBasicType("uint64")
+	out.AddGlobalType("error")
+	out.AddGlobalType("string")
+	out.AddGlobalType("float")
+	out.AddGlobalType("float32")
+	out.AddGlobalType("float64")
+	out.AddGlobalType("bool")
+	out.AddGlobalType("byte")
+	out.AddGlobalType("int")
+	out.AddGlobalType("int8")
+	out.AddGlobalType("int16")
+	out.AddGlobalType("int32")
+	out.AddGlobalType("int64")
+	out.AddGlobalType("uint")
+	out.AddGlobalType("uint8")
+	out.AddGlobalType("uint16")
+	out.AddGlobalType("uint32")
+	out.AddGlobalType("uint64")
 	return &out
 }
 
 /**
  * Returns all the types as a list.
  */
-func (tl *TypeLibrary) ForEach(mapFunc func(string, *Type) bool) {
+func (tl *TypeLibrary) ForEach(mapFunc func(string, *Type, *bool)) {
 	for k, v := range tl.types {
-		if mapFunc(k, v) {
+		stop := false
+		mapFunc(k, v, &stop)
+		if stop {
 			return
 		}
 	}
 }
 
-func (tl *TypeLibrary) AddBasicType(name string) (alt *Type) {
-	return tl.AddType("", name, &Type{BasicType, name})
+func (tl *TypeLibrary) AddGlobalType(name string) (alt *Type) {
+	return tl.AddType("", name, &Type{NamedType, &NamedTypeData{name, ""}})
 }
 
-func (tl *TypeLibrary) GetBasicType(name string) (alt *Type) {
+func (tl *TypeLibrary) GetGlobalType(name string) (alt *Type) {
 	return tl.GetType("", name)
 }
 
@@ -153,11 +158,13 @@ func (tl *TypeLibrary) Signature(t *Type) string {
 		return ""
 	case UnresolvedType:
 		return t.TypeData.(string)
-	case BasicType:
-		return t.TypeData.(string)
-	case ExternalType:
-		data := t.TypeData.(*ExternalTypeData)
-		return data.Package + "." + data.Name
+	case NamedType:
+		data := t.TypeData.(*NamedTypeData)
+		out := data.Name
+		if data.Package != "" {
+			out = data.Package + "." + out
+		}
+		return out
 	case AliasType:
 		return t.TypeData.(string)
 	case ReferenceType:

@@ -1,5 +1,9 @@
 package bridge
 
+import (
+	"io"
+)
+
 /**
  * Responsible for generating the code for the client classes.
  */
@@ -7,7 +11,7 @@ type Generator interface {
 	/**
 	 * Emits the class that acts as a client for the service.
 	 */
-	EmitClientClass(serviceType *Type) error
+	EmitClientClass(writer io.Writer, serviceType *Type) error
 
 	/**
 	 * For a given service operation, emits a method which:
@@ -16,5 +20,11 @@ type Generator interface {
 	 * 3. Sends the transport level request
 	 * 4. Gets a response from the transport level and returns it
 	 */
-	EmitSendRequestMethod(opName string, opType *FunctionTypeData, argPrefix string) error
+	EmitSendRequestMethod(writer io.Writer, opName string, opType *FunctionTypeData, argPrefix string) error
+
+	/**
+	 * Emits the writer for a particular type and in the process returns via the
+	 * recorder the types that for which writers must or will be defined.
+	 */
+	EmitTypeWriter(writer io.Writer, argType *Type, visited map[*Type]bool) error
 }

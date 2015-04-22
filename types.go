@@ -1,12 +1,13 @@
 package bridge
 
-import ()
+import (
+	"fmt"
+)
 
 const (
 	NullType = iota
 	UnresolvedType
-	BasicType
-	ExternalType
+	NamedType
 	AliasType
 	ReferenceType
 	TupleType
@@ -23,13 +24,54 @@ type Type struct {
 	TypeData interface{}
 }
 
+func (t *Type) TypeClassString() string {
+	switch t.TypeClass {
+	case NullType:
+		return "	NullType"
+	case UnresolvedType:
+		return "	UnresolvedType"
+	case NamedType:
+		return "	NamedType"
+	case AliasType:
+		return "AliasType"
+	case ReferenceType:
+		return "ReferenceType"
+	case TupleType:
+		return "TupleType"
+	case RecordType:
+		return "RecordType"
+	case FunctionType:
+		return "FunctionType"
+	case ListType:
+		return "ListType"
+	case MapType:
+		return "MapType"
+	}
+	return ""
+}
+
+func (t *Type) IsNullType() bool       { return t.TypeClass == NullType }
+func (t *Type) IsUnresolvedType() bool { return t.TypeClass == UnresolvedType }
+func (t *Type) IsNamedType() bool      { return t.TypeClass == NamedType }
+func (t *Type) IsAliasType() bool      { return t.TypeClass == AliasType }
+func (t *Type) IsReferenceType() bool  { return t.TypeClass == ReferenceType }
+func (t *Type) IsTupleType() bool      { return t.TypeClass == TupleType }
+func (t *Type) IsRecordType() bool     { return t.TypeClass == RecordType }
+func (t *Type) IsFunctionType() bool   { return t.TypeClass == FunctionType }
+func (t *Type) IsListType() bool       { return t.TypeClass == ListType }
+func (t *Type) IsMapType() bool        { return t.TypeClass == MapType }
+
+func (t *Type) String() string {
+	return fmt.Sprintf("{%d - %s}", t.TypeClass, t.TypeData)
+}
+
 func NewType(typeCls int, data interface{}) *Type {
 	return &Type{TypeClass: typeCls, TypeData: data}
 }
 
-type ExternalTypeData struct {
-	Package string
+type NamedTypeData struct {
 	Name    string
+	Package string
 }
 
 type AliasTypeData struct {
@@ -59,11 +101,11 @@ type TupleTypeData struct {
 }
 
 type RecordTypeData struct {
+	NamedTypeData
+
 	// Type of each member in the struct
-	Name    string
-	Package string
-	Bases   []*Type
-	Fields  []*Field
+	Bases  []*Type
+	Fields []*Field
 }
 
 func (td *RecordTypeData) NumFields() int {

@@ -158,7 +158,7 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 		// the type could either be in this package itself or could be a
 		// basic type or could actually be imported implicitly (via ".").
 		// So check for each of the cases
-		var t *Type = typeLibrary.GetBasicType(typeExpr.Name)
+		var t *Type = typeLibrary.GetGlobalType(typeExpr.Name)
 
 		// case 1: typeExpr.Name refers to a basic type
 		if t != nil {
@@ -186,7 +186,7 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 			if fullPkgName == "" {
 				fullPkgName = pkgName
 			}
-			t = &Type{TypeClass: ExternalType, TypeData: &ExternalTypeData{fullPkgName, typeExpr.Sel.Name}}
+			t = &Type{TypeClass: NamedType, TypeData: &NamedTypeData{typeExpr.Sel.Name, fullPkgName}}
 			typeLibrary.AddType(fullPkgName, typeExpr.Sel.Name, t)
 		}
 		return t
@@ -198,12 +198,11 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 				fieldType := parsedFile.NodeToType(field.Type, typeLibrary)
 				// log.Println("Processing field: ", index, field.Names, field.Type, reflect.TypeOf(field.Type))
 				if len(field.Names) == 0 {
-					recordData.Bases = append(recordData.Bases, fieldType)
-				} else {
-					for _, fieldName := range field.Names {
-						field := &Field{Name: fieldName.Name, Type: fieldType}
-						recordData.Fields = append(recordData.Fields, field)
-					}
+					field.Names = []*ast.Ident{&ast.Ident{}}
+				}
+				for _, fieldName := range field.Names {
+					field := &Field{Name: fieldName.Name, Type: fieldType}
+					recordData.Fields = append(recordData.Fields, field)
 				}
 			}
 			return &Type{TypeClass: RecordType, TypeData: recordData}
@@ -215,6 +214,9 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 			for _, field := range fieldList {
 				// log.Println("Processing method: ", index, field.Names[0], field.Type, reflect.TypeOf(field.Type))
 				fieldType := parsedFile.NodeToType(field.Type, typeLibrary)
+				if len(field.Names) == 0 {
+					field.Names = []*ast.Ident{&ast.Ident{}}
+				}
 				for _, fieldName := range field.Names {
 					field := &Field{Name: fieldName.Name, Type: fieldType}
 					recordData.Fields = append(recordData.Fields, field)
@@ -223,7 +225,7 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 			return &Type{TypeClass: RecordType, TypeData: recordData}
 		}
 	case *ast.TypeSpec:
-		recordData := &RecordTypeData{Name: typeExpr.Name.Name, Package: parsedFile.PackagePath}
+		recordData := &RecordTypeData{NamedTypeData: NamedTypeData{Name: typeExpr.Name.Name, Package: parsedFile.PackagePath}}
 		// Check if we have a "lazy" type for this package/name combo
 		out := typeLibrary.GetType(parsedFile.PackagePath, recordData.Name)
 		if out != nil {

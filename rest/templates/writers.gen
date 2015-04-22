@@ -1,0 +1,29 @@
+
+func Write_{{.Gen.IOMethodForType .Type}} (writer io.Writer, arg {{.Gen.TypeLib.Signature .Type}}) error {
+	{{ if .Type.IsReferenceType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, arg)
+	{{ else if .Type.IsAliasType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, arg)
+	{{ else if .Type.IsListType }}
+	writer.Write([]byte("["))
+	for index, value := range arg {
+		if index > 0 {
+			writer.Write([]byte(","))
+		}
+		Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(value)
+	}
+	writer.Write([]byte("]"))
+	{{ else if .Type.IsMapType }}
+	docomma := false
+	writer.Write([]byte("{"))
+	for key, value := range arg {
+		if docomma {
+			writer.Write([]byte(","))
+		}
+		docomma = true
+		writer.Write([]byte("\""))
+		Write_{{.Gen.IOMethodForType .Type.TypeData.KeyType}}(key)
+		writer.Write([]byte("\": "))
+		Write_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(value)
+	}
+	writer.Write([]byte("}"))
+	{{ else }}return nil {{ end }}
+}
