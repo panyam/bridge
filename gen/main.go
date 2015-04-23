@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -57,7 +58,7 @@ func ParseFiles(fileNames []string) (map[string]*bridge.ParsedFile, bridge.IType
 }
 
 func OpenFile(path string) *os.File {
-	out, err := os.Create("./restclient/client.go")
+	out, err := os.Create(path)
 	if err != nil {
 		log.Println("Cannot create file: ", err)
 		panic(err)
@@ -113,8 +114,8 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 			generator.EmitSendRequestMethod(opsBuff, field.Name, optype, "arg")
 		}
 	}
-	ops_file := OpenFile("./restops/ops.go")
-	EmitFileHeader(ops_file, generator.ClientPackageName, uniqueTypes, typeLibrary)
+	ops_file := OpenFile("./restclient/ops.go")
+	EmitFileHeader(ops_file, generator.ClientPackageName, uniqueTypes, typeLibrary, "net/http", "bytes")
 	ops_file.Write(opsBuff.Bytes())
 	ops_file.Close()
 
@@ -124,7 +125,7 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 	for _, t := range uniqueTypes {
 		generator.EmitTypeWriter(writersBuff, t)
 	}
-	writers_file := OpenFile("./restwriters/writers.go")
+	writers_file := OpenFile("./restclient/writers.go")
 	EmitFileHeader(writers_file, generator.ClientPackageName, uniqueTypes, typeLibrary)
 	writers_file.Write(writersBuff.Bytes())
 	writers_file.Close()
@@ -134,11 +135,23 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
  * Writes the package header containing the package name and the imports of the
  * unique types to the output.
  */
-func EmitFileHeader(writer io.Writer, packageName string, types []*bridge.Type, typeLib bridge.ITypeLibrary) error {
+func EmitFileHeader(writer io.Writer, packageName string, types []*bridge.Type, typeLib bridge.ITypeLibrary, extraPackages ...string) error {
 	writer.Write([]byte("package " + packageName + "\n\n"))
 
 	writer.Write([]byte("import (\n"))
+
 	pkgVisited := make(map[string]bool)
+	for _, pkg := range extraPackages {
+		pkgs := strings.Split(pkg, " ")
+		if len(pkgs) == 1 {
+			pkgVisited[pkgs[0]] = true
+			writer.Write([]byte(fmt.Sprintf("	\"%s\"\n", pkgs[0])))
+		} else {
+			pkgVisited[pkgs[1]] = true
+			writer.Write([]byte(fmt.Sprintf("	%s \"%s\"\n", pkgs[0], pkgs[1])))
+		}
+	}
+
 	for _, t := range types {
 		leafType := t.LeafType()
 		pkg := leafType.Package

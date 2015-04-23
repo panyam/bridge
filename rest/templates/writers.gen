@@ -1,4 +1,5 @@
 {{ $context := . }}
+{{ (.MarkType .Type ) }}
 func Write_{{.Gen.IOMethodForType .Type}} (writer io.Writer, arg {{.Gen.TypeLib.Signature .Type}}) error {
 	{{ if .Type.IsReferenceType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, arg)
 	{{ else if .Type.IsAliasType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, arg)
