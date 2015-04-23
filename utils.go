@@ -172,7 +172,7 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 		t = typeLibrary.GetType(parsedFile.PackagePath, typeExpr.Name)
 		if t == nil {
 			// Case 3: No previous def, so create a lazy type
-			t = &Type{TypeClass: UnresolvedType, TypeData: typeExpr.Name}
+			t = &Type{TypeClass: UnresolvedType, TypeData: &NamedTypeData{typeExpr.Name, parsedFile.PackagePath}}
 			typeLibrary.AddType(parsedFile.PackagePath, typeExpr.Name, t)
 		}
 		return t

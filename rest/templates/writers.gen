@@ -1,4 +1,4 @@
-
+{{ $context := . }}
 func Write_{{.Gen.IOMethodForType .Type}} (writer io.Writer, arg {{.Gen.TypeLib.Signature .Type}}) error {
 	{{ if .Type.IsReferenceType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, arg)
 	{{ else if .Type.IsAliasType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, arg)
@@ -24,6 +24,23 @@ func Write_{{.Gen.IOMethodForType .Type}} (writer io.Writer, arg {{.Gen.TypeLib.
 			writer.Write([]byte("\": "))
 			Write_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(value)
 		}
+		writer.Write([]byte("}"))
+	{{ else if .Type.IsRecordType }}
+		{{ $startCommas := false }}
+		writer.Write([]byte("{"))
+		{{ range $index, $field := .Type.TypeData.Fields }}{{ if not $field.Type.IsFunctionType }} 
+			{{ if not $startCommas }} {{$startCommas := true}}
+			{{ else }} writer.Write([]byte(",")) {{ end }}
+			writer.Write([]byte("\""))
+			{{ if eq $field.Name "" }}writer.Write([]byte("{{$field.Type.LeafType.Name}}"))
+			{{ else }}writer.Write([]byte("{{$field.Name}}")){{ end }}
+			writer.Write([]byte("\": "))
+			{{ if eq $field.Name "" }}
+			Write_{{$context.Gen.IOMethodForType $field.Type}}(arg.{{$field.Type.LeafType.Name}})
+			{{else}}
+			Write_{{$context.Gen.IOMethodForType $field.Type}}(arg.{{$field.Name}})
+			{{end}}
+		{{ end }}{{ end }}
 		writer.Write([]byte("}"))
 	{{ else }}return nil {{ end }}
 }

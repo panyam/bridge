@@ -15,13 +15,16 @@ type ITypeLibrary interface {
 	// Package related API
 	AddPackage(name string) (shortName string)
 	ForEach(func(string, *Type, *bool))
+	PackageByShortName(name string) string
+	ShortNameForPackage(pkg string) string
 
 	// Signature string creation
 	Signature(t *Type) string
 	TypeListSignature(types []*Type, argfmt string) string
 
-	PackageByShortName(name string) string
-	ShortNameForPackage(pkg string) string
+	// General visitors
+	// TODO: move this out of this fat interface
+	TransitiveClosureFrom(startType *Type, filter func(t *Type) bool) ([]*Type, []string)
 }
 
 type TypeLibrary struct {
@@ -171,6 +174,9 @@ func (tl *TypeLibrary) Signature(t *Type) string {
 		return "*" + tl.Signature(t.TypeData.(*ReferenceTypeData).TargetType)
 	case RecordType:
 		recordType := t.TypeData.(*RecordTypeData)
+		if recordType.Name == "" {
+			return "interface{}"
+		}
 		if recordType.Package == "" {
 			return recordType.Name
 		} else {
@@ -216,4 +222,71 @@ func (tl *TypeLibrary) TypeListSignature(types []*Type, argfmt string) string {
 		}
 	}
 	return out
+}
+
+func (tl *TypeLibrary) TransitiveClosureFrom(startType *Type, filter func(t *Type) bool) ([]*Type, []string) {
+	sigVisited := make(map[string]bool)
+	typeVisited := make(map[*Type]bool)
+	uniqueTypes := make([]*Type, 0, 100)
+	stack := []*Type{startType}
+	stackLen := len(stack)
+
+	addType := func(t *Type) {
+		if !typeVisited[t] {
+			typeVisited[t] = true
+			sig := tl.Signature(t)
+			if !sigVisited[sig] {
+				sigVisited[sig] = true
+				stack = append(stack, t)
+			}
+		}
+	}
+
+	for stackLen > 0 {
+		currType := stack[stackLen-1]
+		stack = stack[:stackLen-1]
+		if filter(currType) {
+			uniqueTypes = append(uniqueTypes, currType)
+		}
+		// see if we have any child types to visit
+		switch typeData := currType.TypeData.(type) {
+		case *AliasTypeData:
+			addType(typeData.TargetType)
+		case *ReferenceTypeData:
+			addType(typeData.TargetType)
+		case *RecordTypeData:
+			for _, field := range typeData.Fields {
+				addType(field.Type)
+			}
+		case *TupleTypeData:
+			for _, childType := range typeData.SubTypes {
+				addType(childType)
+			}
+		case *FunctionTypeData:
+			for _, childType := range typeData.InputTypes {
+				addType(childType)
+			}
+			for _, childType := range typeData.OutputTypes {
+				addType(childType)
+			}
+		case *ListTypeData:
+			addType(typeData.TargetType)
+		case *MapTypeData:
+			addType(typeData.KeyType)
+			addType(typeData.ValueType)
+		}
+		stackLen = len(stack)
+	}
+
+	pkgVisited := make(map[string]bool)
+	uniquePackages := make([]string, 0, 100)
+	for _, t := range uniqueTypes {
+		leafType := t.LeafType()
+		if leafType != nil && leafType.Package != "" &&
+			!pkgVisited[leafType.Package] {
+			pkgVisited[leafType.Package] = true
+			uniquePackages = append(uniquePackages, leafType.Package)
+		}
+	}
+	return uniqueTypes, uniquePackages
 }

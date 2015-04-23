@@ -27,11 +27,11 @@ type Type struct {
 func (t *Type) TypeClassString() string {
 	switch t.TypeClass {
 	case NullType:
-		return "	NullType"
+		return "NullType"
 	case UnresolvedType:
-		return "	UnresolvedType"
+		return "UnresolvedType"
 	case NamedType:
-		return "	NamedType"
+		return "NamedType"
 	case AliasType:
 		return "AliasType"
 	case ReferenceType:
@@ -61,6 +61,29 @@ func (t *Type) IsFunctionType() bool   { return t.TypeClass == FunctionType }
 func (t *Type) IsListType() bool       { return t.TypeClass == ListType }
 func (t *Type) IsMapType() bool        { return t.TypeClass == MapType }
 
+func (t *Type) AsNamedType() *NamedTypeData         { return t.TypeData.(*NamedTypeData) }
+func (t *Type) AsAliasType() *AliasTypeData         { return t.TypeData.(*AliasTypeData) }
+func (t *Type) AsReferenceType() *ReferenceTypeData { return t.TypeData.(*ReferenceTypeData) }
+func (t *Type) AsTupleType() *TupleTypeData         { return t.TypeData.(*TupleTypeData) }
+func (t *Type) AsRecordType() *RecordTypeData       { return t.TypeData.(*RecordTypeData) }
+func (t *Type) AsFunctionType() *FunctionTypeData   { return t.TypeData.(*FunctionTypeData) }
+func (t *Type) AsListType() *ListTypeData           { return t.TypeData.(*ListTypeData) }
+func (t *Type) AsMapType() *MapTypeData             { return t.TypeData.(*MapTypeData) }
+
+func (t *Type) LeafType() *NamedTypeData {
+	switch typeData := t.TypeData.(type) {
+	case *NamedTypeData:
+		return typeData
+	case *AliasTypeData:
+		return typeData.TargetType.LeafType()
+	case *ReferenceTypeData:
+		return typeData.TargetType.LeafType()
+	case *RecordTypeData:
+		return &typeData.NamedTypeData
+	}
+	return nil
+}
+
 func (t *Type) String() string {
 	return fmt.Sprintf("{%d - %s}", t.TypeClass, t.TypeData)
 }
@@ -76,8 +99,8 @@ type NamedTypeData struct {
 
 type AliasTypeData struct {
 	// Type this is an alias/typedef for
-	Name     string
-	AliasFor *Type
+	Name       string
+	TargetType *Type
 }
 
 type ReferenceTypeData struct {

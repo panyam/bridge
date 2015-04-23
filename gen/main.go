@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"github.com/panyam/bridge"
 	"github.com/panyam/bridge/rest"
+	"io"
 	"log"
 	"os"
 )
@@ -20,13 +22,19 @@ func main() {
 		log.Println("Service required")
 	}
 
+	_, typeLibrary := ParseFiles(flag.Args())
+	serviceType := typeLibrary.GetType("core", serviceName)
+	CreateClientForType(typeLibrary, serviceType)
+}
+
+func ParseFiles(fileNames []string) (map[string]*bridge.ParsedFile, bridge.ITypeLibrary) {
 	typeLibrary := bridge.NewTypeLibrary()
 	parsedFiles := make(map[string]*bridge.ParsedFile)
-	for _, srcFile := range flag.Args() {
+	for _, srcFile := range fileNames {
 		pf, err := bridge.NewParsedFile(srcFile)
 		if err != nil {
 			log.Println("Parsing error: ", err)
-			return
+			panic(err)
 		}
 		parsedFiles[pf.FullPath] = pf
 	}
@@ -45,71 +53,100 @@ func main() {
 			log.Println("Unresolved Type: ", name, t.TypeData)
 		}
 	})
+	return parsedFiles, typeLibrary
+}
 
-	serviceType := typeLibrary.GetType("core", serviceName)
-	CreateClientForType(typeLibrary, serviceType)
+func OpenFile(path string) *os.File {
+	out, err := os.Create("./restclient/client.go")
+	if err != nil {
+		log.Println("Cannot create file: ", err)
+		panic(err)
+	}
+	return out
 }
 
 func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Type) {
-	client_file, err := os.Create("./restclient/client.go")
-	if err != nil {
-		log.Println("Cannot create client_file: ", err)
-		return
-	}
-	defer client_file.Close()
-
-	opsbuffer := bytes.NewBuffer(nil)
+	// Create the generator
 	generator := rest.NewGenerator(nil, typeLibrary, "../rest/templates/")
-	err = generator.EmitClientClass(client_file, serviceType)
+
+	sigVisited := make(map[string]bool)
+	typeVisited := make(map[*bridge.Type]bool)
+	uniqueTypes := make([]*bridge.Type, 0, 100)
+	resetTypes := func() {
+		sigVisited = make(map[string]bool)
+		typeVisited = make(map[*bridge.Type]bool)
+		uniqueTypes = make([]*bridge.Type, 0, 100)
+	}
+	generator.TypeMarker = func(t *bridge.Type) {
+		if !typeVisited[t] {
+			typeVisited[t] = true
+			sig := typeLibrary.Signature(t)
+			if !sigVisited[sig] {
+				sigVisited[sig] = true
+				uniqueTypes = append(uniqueTypes, t)
+			}
+		}
+	}
+
+	// Generate the interface declartion
+	resetTypes()
+	clientBuff := bytes.NewBuffer(nil)
+	err := generator.EmitClientClass(clientBuff, serviceType)
 	if err != nil {
 		log.Println("Class emitting error: ", err)
 		return
 	}
+	client_file := OpenFile("./restclient/client.go")
+	EmitFileHeader(client_file, generator.ClientPackageName, uniqueTypes, typeLibrary)
+	client_file.Write(clientBuff.Bytes())
+	client_file.Close()
 
-	uniqueTypes := make(map[*bridge.Type]bool)
-
+	// Generate code for each of the service operation methods
+	resetTypes()
+	opsBuff := bytes.NewBuffer(nil)
 	serviceTypeData := generator.ServiceTypeData()
-	// Generate code for each of the service methods
 	for _, field := range serviceTypeData.Fields {
 		switch optype := field.Type.TypeData.(type) {
 		case *bridge.FunctionTypeData:
 			// get the type info and ensure the packages referred by this type
 			// are imported
-			generator.EmitSendRequestMethod(opsbuffer, field.Name, optype, "arg")
-			for _, t := range optype.InputTypes {
-				uniqueTypes[t] = true
-			}
-			for _, t := range optype.OutputTypes {
-				uniqueTypes[t] = true
-			}
+			generator.EmitSendRequestMethod(opsBuff, field.Name, optype, "arg")
 		}
 	}
+	ops_file := OpenFile("./restops/ops.go")
+	EmitFileHeader(ops_file, generator.ClientPackageName, uniqueTypes, typeLibrary)
+	ops_file.Write(opsBuff.Bytes())
+	ops_file.Close()
 
-	operations_file, err := os.Create("./restclient/ops.go")
-	if err != nil {
-		log.Println("Cannot create operations_file: ", err)
-		return
+	// Write the writers for each of the unique types
+	resetTypes()
+	writersBuff := bytes.NewBuffer(nil)
+	for _, t := range uniqueTypes {
+		generator.EmitTypeWriter(writersBuff, t)
 	}
-	defer operations_file.Close()
-	operations_file.Write(opsbuffer.Bytes())
+	writers_file := OpenFile("./restwriters/writers.go")
+	EmitFileHeader(writers_file, generator.ClientPackageName, uniqueTypes, typeLibrary)
+	writers_file.Write(writersBuff.Bytes())
+	writers_file.Close()
+}
 
-	// Now generate the writers for all types we have found
-	writers_file, err := os.Create("./restclient/writers.go")
-	if err != nil {
-		log.Println("Cannot create writers_file: ", err)
-		return
-	}
-	defer writers_file.Close()
-	visited := make(map[*bridge.Type]bool)
-	for t, _ := range uniqueTypes {
-		log.Println("Creating writer for T: ", t)
-		generator.EmitTypeWriter(writers_file, t, visited)
-	}
+/**
+ * Writes the package header containing the package name and the imports of the
+ * unique types to the output.
+ */
+func EmitFileHeader(writer io.Writer, packageName string, types []*bridge.Type, typeLib bridge.ITypeLibrary) error {
+	writer.Write([]byte("package " + packageName + "\n\n"))
 
-	/*
-		headerbuffer := bytes.NewBuffer(nil)
-		headerbuffer.Write([]byte(fmt.Sprintf("package %s\n", generator.ClientPackageName)))
-		headerbuffer.Write([]byte(fmt.Sprintf("import (\n")
-		headerbuffer.Write([]byte(fmt.Sprintf(")\n\n")
-	*/
+	writer.Write([]byte("import (\n"))
+	pkgVisited := make(map[string]bool)
+	for _, t := range types {
+		leafType := t.LeafType()
+		pkg := leafType.Package
+		if leafType != nil && pkg != "" && !pkgVisited[pkg] {
+			pkgVisited[pkg] = true
+			writer.Write([]byte(fmt.Sprintf("	%s \"%s\"\n", typeLib.ShortNameForPackage(pkg), pkg)))
+		}
+	}
+	writer.Write([]byte(")\n"))
+	return nil
 }

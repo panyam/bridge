@@ -26,5 +26,5 @@ type Generator interface {
 	 * Emits the writer for a particular type and in the process returns via the
 	 * recorder the types that for which writers must or will be defined.
 	 */
-	EmitTypeWriter(writer io.Writer, argType *Type, visited map[*Type]bool) error
+	EmitTypeWriter(writer io.Writer, argType *Type) error
 }

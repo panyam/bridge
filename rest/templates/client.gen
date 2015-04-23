@@ -1,14 +1,6 @@
-{{ $context := . }}
 
-package {{$context.ClientPackageName}}
-
-import (
-	"net/http"
-	"bytes"
-)
-
-type {{$context.ClientName}} struct {
-	service {{.TypeLib.Signature $context.ServiceType}}
+type {{.ClientName}} struct {
+	service {{.TypeLib.Signature .ServiceType}} {{ (.MarkType .ServiceType) }}
 	RequestDecorator func(req *http.Request) (*http.Request, error)
 }
 

@@ -30,6 +30,16 @@ type Generator struct {
 	OpType            *bridge.FunctionTypeData
 	OpMethod          string
 	OpEndpoint        string
+
+	// Callbacks from the template to mark certain items in the code generation
+	TypeMarker func(t *bridge.Type)
+}
+
+func (g *Generator) MarkType(t *bridge.Type) string {
+	if g.TypeMarker != nil {
+		g.TypeMarker(t)
+	}
+	return ""
 }
 
 func (g *Generator) ClientName() string {
@@ -155,7 +165,7 @@ func (g *Generator) IOMethodForType(t *bridge.Type) string {
 			return g.TypeLib.ShortNameForPackage(typeData.Package) + "_" + typeData.Name
 		}
 	case *bridge.AliasTypeData:
-		return g.IOMethodForType(typeData.AliasFor)
+		return g.IOMethodForType(typeData.TargetType)
 	case *bridge.ReferenceTypeData:
 		return "Ref_" + g.IOMethodForType(typeData.TargetType)
 	case *bridge.FunctionTypeData:
@@ -164,6 +174,9 @@ func (g *Generator) IOMethodForType(t *bridge.Type) string {
 		panic(errors.New("Warning: Tuple types not supported in GO"))
 		return "Tuple"
 	case *bridge.RecordTypeData:
+		if typeData.Name == "" {
+			return "interface"
+		}
 		if typeData.Package == "" {
 			return typeData.Name
 		} else {
@@ -205,13 +218,12 @@ func (g *Generator) EndWritingList(output io.Writer) {
  * Emits the writer for a particular type and in the process returns via the
  * recorder the types that for which writers must or will be defined.
  */
-func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type, visited map[*bridge.Type]bool) error {
-	fmt.Println("Type: ", argType.TypeClass)
+func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type) error {
 	tmpl, err := template.New("writers.gen").ParseFiles(g.TemplatesDir + "writers.gen")
 	if err != nil {
 		panic(err)
 	}
-	err = tmpl.Execute(writer, map[string]interface{}{"Gen": g, "Type": argType, "Visited": visited})
+	err = tmpl.Execute(writer, map[string]interface{}{"Gen": g, "Type": argType})
 	if err != nil {
 		panic(err)
 	}
