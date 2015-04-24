@@ -12,7 +12,7 @@
 		Write_{{$context.Gen.IOMethodForType $field.Type}}(writer, arg.{{$field.Type.LeafType.Name}})
 		{{else}}
 		Write_{{$context.Gen.IOMethodForType $field.Type}}(writer, arg.{{$field.Name}})
-		{{end}}
+		{{end}} {{ $context.Gen.MarkType $field.Type }}
 	{{ end }}{{ end }}
 	_, err := writer.Write([]byte("}"))
 	return err
