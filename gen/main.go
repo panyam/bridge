@@ -78,13 +78,15 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 		typeVisited = make(map[*bridge.Type]bool)
 		uniqueTypes = make([]*bridge.Type, 0, 100)
 	}
-	generator.TypeMarker = func(t *bridge.Type) {
-		if !typeVisited[t] {
-			typeVisited[t] = true
-			sig := typeLibrary.Signature(t)
-			if !sigVisited[sig] {
-				sigVisited[sig] = true
-				uniqueTypes = append(uniqueTypes, t)
+	generator.TypeMarker = func(types ...*bridge.Type) {
+		for _, t := range types {
+			if !typeVisited[t] {
+				typeVisited[t] = true
+				sig := typeLibrary.Signature(t)
+				if !sigVisited[sig] {
+					sigVisited[sig] = true
+					uniqueTypes = append(uniqueTypes, t)
+				}
 			}
 		}
 	}
@@ -98,7 +100,7 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 		return
 	}
 	client_file := OpenFile("./restclient/client.go")
-	EmitFileHeader(client_file, generator.ClientPackageName, uniqueTypes, typeLibrary)
+	EmitFileHeader(client_file, generator.ClientPackageName, uniqueTypes, typeLibrary, "net/http")
 	client_file.Write(clientBuff.Bytes())
 	client_file.Close()
 
@@ -119,14 +121,23 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 	ops_file.Write(opsBuff.Bytes())
 	ops_file.Close()
 
-	// Write the writers for each of the unique types
-	resetTypes()
+	// Print the types:
+	log.Println("Unique Types after writing operations: ", uniqueTypes)
+
+	// Write the writers for each of the unique types and any other unique type
+	// those ones surface
 	writersBuff := bytes.NewBuffer(nil)
-	for _, t := range uniqueTypes {
-		generator.EmitTypeWriter(writersBuff, t)
+	var allUniqueTypes []*bridge.Type
+	for len(uniqueTypes) > 0 {
+		allUniqueTypes = append(allUniqueTypes, uniqueTypes...)
+		savedUniqueTypes := uniqueTypes
+		uniqueTypes = make([]*bridge.Type, 0, 100)
+		for _, t := range savedUniqueTypes {
+			generator.EmitTypeWriter(writersBuff, t)
+		}
 	}
 	writers_file := OpenFile("./restclient/writers.go")
-	EmitFileHeader(writers_file, generator.ClientPackageName, uniqueTypes, typeLibrary)
+	EmitFileHeader(writers_file, generator.ClientPackageName, allUniqueTypes, typeLibrary, "io")
 	writers_file.Write(writersBuff.Bytes())
 	writers_file.Close()
 }
@@ -154,10 +165,12 @@ func EmitFileHeader(writer io.Writer, packageName string, types []*bridge.Type, 
 
 	for _, t := range types {
 		leafType := t.LeafType()
-		pkg := leafType.Package
-		if leafType != nil && pkg != "" && !pkgVisited[pkg] {
-			pkgVisited[pkg] = true
-			writer.Write([]byte(fmt.Sprintf("	%s \"%s\"\n", typeLib.ShortNameForPackage(pkg), pkg)))
+		if leafType != nil {
+			pkg := leafType.Package
+			if pkg != "" && !pkgVisited[pkg] {
+				pkgVisited[pkg] = true
+				writer.Write([]byte(fmt.Sprintf("	%s \"%s\"\n", typeLib.ShortNameForPackage(pkg), pkg)))
+			}
 		}
 	}
 	writer.Write([]byte(")\n"))

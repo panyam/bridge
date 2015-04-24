@@ -32,12 +32,19 @@ type Generator struct {
 	OpEndpoint        string
 
 	// Callbacks from the template to mark certain items in the code generation
-	TypeMarker func(t *bridge.Type)
+	TypeMarker func(types ...*bridge.Type)
 }
 
-func (g *Generator) MarkType(t *bridge.Type) string {
+func (g *Generator) MarkTypes(types []*bridge.Type) string {
+	if types != nil {
+		return g.MarkType(types...)
+	}
+	return ""
+}
+
+func (g *Generator) MarkType(types ...*bridge.Type) string {
 	if g.TypeMarker != nil {
-		g.TypeMarker(t)
+		g.TypeMarker(types...)
 	}
 	return ""
 }
@@ -117,7 +124,7 @@ func (g *Generator) EmitSendRequestMethod(output io.Writer, opName string, opTyp
 func (g *Generator) StartWritingMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
 	templ, err := template.New("writer").Parse(`
 func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) (*http.Response, error) {
-	var body *bytes.Buffer = {{ if eq .OpType.NumInputs 0 }}nil{{else}}bytes.NewBuffer(nil){{end}}
+	var body *bytes.Buffer = {{ if eq .OpType.NumInputs 0 }}nil{{else}}bytes.NewBuffer(nil){{(.MarkTypes .OpType.InputTypes)}}{{end}}
 	`)
 	if err != nil {
 		panic(err)

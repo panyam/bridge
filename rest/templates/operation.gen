@@ -23,10 +23,7 @@ func (svc *{{$context.ClientName}}) Send{{.OpName}}Request({{call $context.TypeL
 {{ else if gt $numInputs 1 }}
 	body := bytes.NewBuffer()
 	protocol.StartList()
-	{{ range $i, $param := .OpType.InputTypes }}
-
-	protocol.{{$param}}WritStartList()
-	{{end}} }
+	{{ range $i, $param := .OpType.InputTypes }}protocol.{{$param}}WritStartList(){{end}} }
 	protocol.EndList()
 {{ end }}
 	httpreq, err := http.NewRequest(binding.Method, endpoint, body)

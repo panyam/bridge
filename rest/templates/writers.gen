@@ -1,15 +1,16 @@
 {{ $context := . }}
-{{ (.MarkType .Type ) }}
 func Write_{{.Gen.IOMethodForType .Type}} (writer io.Writer, arg {{.Gen.TypeLib.Signature .Type}}) error {
-	{{ if .Type.IsReferenceType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, arg)
+	{{ if .Type.IsReferenceType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, *arg)
+	{{ ( .Gen.MarkType .Type.TypeData.TargetType ) }}
 	{{ else if .Type.IsAliasType }}return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, arg)
+	{{ ( .Gen.MarkType .Type.TypeData.TargetType ) }}
 	{{ else if .Type.IsListType }}
 		writer.Write([]byte("["))
 		for index, value := range arg {
 			if index > 0 {
 				writer.Write([]byte(","))
 			}
-			Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(value)
+			Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, value)
 		}
 		writer.Write([]byte("]"))
 	{{ else if .Type.IsMapType }}
@@ -21,9 +22,9 @@ func Write_{{.Gen.IOMethodForType .Type}} (writer io.Writer, arg {{.Gen.TypeLib.
 			}
 			docomma = true
 			writer.Write([]byte("\""))
-			Write_{{.Gen.IOMethodForType .Type.TypeData.KeyType}}(key)
+			Write_{{.Gen.IOMethodForType .Type.TypeData.KeyType}}(writer, key)
 			writer.Write([]byte("\": "))
-			Write_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(value)
+			Write_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(writer, value)
 		}
 		writer.Write([]byte("}"))
 	{{ else if .Type.IsRecordType }}
@@ -37,11 +38,12 @@ func Write_{{.Gen.IOMethodForType .Type}} (writer io.Writer, arg {{.Gen.TypeLib.
 			{{ else }}writer.Write([]byte("{{$field.Name}}")){{ end }}
 			writer.Write([]byte("\": "))
 			{{ if eq $field.Name "" }}
-			Write_{{$context.Gen.IOMethodForType $field.Type}}(arg.{{$field.Type.LeafType.Name}})
+			Write_{{$context.Gen.IOMethodForType $field.Type}}(writer, arg.{{$field.Type.LeafType.Name}})
 			{{else}}
-			Write_{{$context.Gen.IOMethodForType $field.Type}}(arg.{{$field.Name}})
+			Write_{{$context.Gen.IOMethodForType $field.Type}}(writer, arg.{{$field.Name}})
 			{{end}}
 		{{ end }}{{ end }}
 		writer.Write([]byte("}"))
-	{{ else }}return nil {{ end }}
+	{{ else }}{{ end }}
+	return nil 
 }
