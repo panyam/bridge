@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/panyam/bridge"
 	"io"
+	"log"
 	"text/template"
 )
 
@@ -206,6 +207,13 @@ func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type) error
 		tmplType = "record"
 	case bridge.AliasType:
 		tmplType = "alias"
+	case bridge.NamedType:
+		// dont write named types - they should be supplied by as common utils?
+		return nil
+	}
+	if tmplType == "" {
+		log.Println("Unknown type: ", argType)
+		panic(nil)
 	}
 	tmplPath := fmt.Sprintf("%s/writer_%s.gen", g.TemplatesDir, tmplType)
 	context := map[string]interface{}{"Gen": g, "Type": argType}

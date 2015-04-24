@@ -121,9 +121,6 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 	ops_file.Write(opsBuff.Bytes())
 	ops_file.Close()
 
-	// Print the types:
-	log.Println("Unique Types after writing operations: ", uniqueTypes)
-
 	// Write the writers for each of the unique types and any other unique type
 	// those ones surface
 	writersBuff := bytes.NewBuffer(nil)
@@ -135,6 +132,10 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 		for _, t := range savedUniqueTypes {
 			generator.EmitTypeWriter(writersBuff, t)
 		}
+	}
+	log.Println("AllUniqueTypes: ")
+	for _, t := range allUniqueTypes {
+		log.Println("Wrote: ", t)
 	}
 	writers_file := OpenFile("./restclient/writers.go")
 	EmitFileHeader(writers_file, generator.ClientPackageName, allUniqueTypes, typeLibrary, "io")
