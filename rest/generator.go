@@ -194,7 +194,24 @@ func (g *Generator) EndWritingList(output io.Writer) {
  * recorder the types that for which writers must or will be defined.
  */
 func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type) error {
-	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writers.gen", map[string]interface{}{"Gen": g, "Type": argType})
+	tmplType := ""
+	switch argType.TypeClass {
+	case bridge.ListType:
+		tmplType = "list"
+	case bridge.MapType:
+		tmplType = "map"
+	case bridge.ReferenceType:
+		tmplType = "ref"
+	case bridge.RecordType:
+		tmplType = "record"
+	case bridge.AliasType:
+		tmplType = "alias"
+	}
+	tmplPath := fmt.Sprintf("%s/writer_%s.gen", g.TemplatesDir, tmplType)
+	context := map[string]interface{}{"Gen": g, "Type": argType}
+	bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_header.gen", context)
+	bridge.RenderTemplate(writer, tmplPath, context)
+	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_footer.gen", context)
 }
 
 /**

@@ -10,4 +10,5 @@
 		writer.Write([]byte("\": "))
 		Write_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(writer, value)
 	}
-	writer.Write([]byte("}"))
+	_, err := writer.Write([]byte("}"))
+	return err

@@ -1,3 +1,4 @@
+	{{$context := .}}
 	{{ $startCommas := false }}
 	writer.Write([]byte("{"))
 	{{ range $index, $field := .Type.TypeData.Fields }}{{ if not $field.Type.IsFunctionType }} 
@@ -13,4 +14,5 @@
 		Write_{{$context.Gen.IOMethodForType $field.Type}}(writer, arg.{{$field.Name}})
 		{{end}}
 	{{ end }}{{ end }}
-	writer.Write([]byte("}"))
+	_, err := writer.Write([]byte("}"))
+	return err
