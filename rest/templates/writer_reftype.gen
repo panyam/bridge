@@ -1,0 +1,1 @@
+return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, *arg) {{ ( .Gen.MarkType .Type.TypeData.TargetType ) }}

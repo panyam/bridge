@@ -1,0 +1,13 @@
+	docomma := false
+	writer.Write([]byte("{"))
+	for key, value := range arg {
+		if docomma {
+			writer.Write([]byte(","))
+		}
+		docomma = true
+		writer.Write([]byte("\""))
+		Write_{{.Gen.IOMethodForType .Type.TypeData.KeyType}}(writer, key)
+		writer.Write([]byte("\": "))
+		Write_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(writer, value)
+	}
+	writer.Write([]byte("}"))

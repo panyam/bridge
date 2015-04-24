@@ -122,43 +122,11 @@ func (g *Generator) EmitSendRequestMethod(output io.Writer, opName string, opTyp
 }
 
 func (g *Generator) StartWritingMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
-	templ, err := template.New("writer").Parse(`
-func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) (*http.Response, error) {
-	var body *bytes.Buffer = {{ if eq .OpType.NumInputs 0 }}nil{{else}}bytes.NewBuffer(nil){{(.MarkTypes .OpType.InputTypes)}}{{end}}
-	`)
-	if err != nil {
-		panic(err)
-	}
-	err = templ.Execute(output, g)
-	if err != nil {
-		panic(err)
-	}
-	return err
+	return bridge.RenderTemplate(output, g.TemplatesDir+"/sender_header.gen", g)
 }
 
 func (g *Generator) EndWritingMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData) error {
-	templ, err := template.New("writer").Parse(`
-	httpreq, err := http.NewRequest("{{.OpMethod}}", "{{.OpEndpoint}}", body)
-	if err != nil {
-		return nil, err
-	}
-	httpreq.Header.Add("Content-Type", "application/json")
-	if svc.RequestDecorator != nil {
-		httpreq, err = svc.RequestDecorator(httpreq)
-		if err != nil { return nil, err }
-	}
-	c := http.Client{}
-	return c.Do(httpreq)
-}
-	`)
-	if err != nil {
-		panic(err)
-	}
-	err = templ.Execute(output, g)
-	if err != nil {
-		panic(err)
-	}
-	return err
+	return bridge.RenderTemplate(output, g.TemplatesDir+"/sender_footer.gen", g)
 }
 
 func (g *Generator) IOMethodForType(t *bridge.Type) string {
@@ -226,15 +194,7 @@ func (g *Generator) EndWritingList(output io.Writer) {
  * recorder the types that for which writers must or will be defined.
  */
 func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type) error {
-	tmpl, err := template.New("writers.gen").ParseFiles(g.TemplatesDir + "writers.gen")
-	if err != nil {
-		panic(err)
-	}
-	err = tmpl.Execute(writer, map[string]interface{}{"Gen": g, "Type": argType})
-	if err != nil {
-		panic(err)
-	}
-	return err
+	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writers.gen", map[string]interface{}{"Gen": g, "Type": argType})
 }
 
 /**

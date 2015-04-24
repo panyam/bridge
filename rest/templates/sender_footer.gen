@@ -1,0 +1,12 @@
+	httpreq, err := http.NewRequest("{{.OpMethod}}", "{{.OpEndpoint}}", body)
+	if err != nil {
+		return nil, err
+	}
+	httpreq.Header.Add("Content-Type", "application/json")
+	if svc.RequestDecorator != nil {
+		httpreq, err = svc.RequestDecorator(httpreq)
+		if err != nil { return nil, err }
+	}
+	c := http.Client{}
+	return c.Do(httpreq)
+}

@@ -4,12 +4,14 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
+	"text/template"
 )
 
 type ParsedFile struct {
@@ -248,4 +250,17 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 	}
 	log.Println("Damn - the wrong type: ", node, reflect.TypeOf(node))
 	return nil
+}
+
+func RenderTemplate(writer io.Writer, templatePath string, context interface{}) error {
+	// TODO: Precompile and cache templates
+	templ, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)
+	if err != nil {
+		panic(err)
+	}
+	err = templ.Execute(writer, context)
+	if err != nil {
+		panic(err)
+	}
+	return err
 }
