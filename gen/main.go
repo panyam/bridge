@@ -113,7 +113,7 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 		case *bridge.FunctionTypeData:
 			// get the type info and ensure the packages referred by this type
 			// are imported
-			generator.EmitSendRequestMethod(opsBuff, field.Name, optype, "arg")
+			generator.EmitServiceCallMethod(opsBuff, field.Name, optype, "arg")
 		}
 	}
 	ops_file := OpenFile("./restclient/ops.go")

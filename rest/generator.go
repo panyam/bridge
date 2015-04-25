@@ -101,33 +101,12 @@ func (g *Generator) EmitClientClass(writer io.Writer, serviceType *bridge.Type) 
  * 3. Sends the transport level request
  * 4. Gets a response from the transport level and returns it
  */
-func (g *Generator) EmitSendRequestMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
+func (g *Generator) EmitServiceCallMethod(writer io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
 	g.OpName = opName
 	g.OpType = opType
 	g.OpMethod = "GET"
 	g.OpEndpoint = "http://hello.world/"
-	g.StartWritingMethod(output, opName, opType, "arg")
-	if opType.NumInputs() > 0 {
-		if opType.NumInputs() == 1 {
-			g.EmitObjectWriterCall(output, nil, "arg0", opType.InputTypes[0])
-		} else {
-			g.StartWritingList(output)
-			for index, param := range opType.InputTypes {
-				g.EmitObjectWriterCall(output, index, fmt.Sprintf("arg%d", index), param)
-			}
-			g.EndWritingList(output)
-		}
-	}
-	g.EndWritingMethod(output, opName, opType)
-	return nil
-}
-
-func (g *Generator) StartWritingMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
-	return bridge.RenderTemplate(output, g.TemplatesDir+"/sender_header.gen", g)
-}
-
-func (g *Generator) EndWritingMethod(output io.Writer, opName string, opType *bridge.FunctionTypeData) error {
-	return bridge.RenderTemplate(output, g.TemplatesDir+"/sender_footer.gen", g)
+	return bridge.RenderTemplate(writer, g.TemplatesDir+"/callmethod.gen", g)
 }
 
 func (g *Generator) IOMethodForType(t *bridge.Type) string {
@@ -174,20 +153,6 @@ func (g *Generator) EmitObjectWriterCall(output io.Writer, key interface{}, argN
 	callString := g.IOMethodForType(argType)
 	output.Write([]byte("Write_" + callString + "(body, " + argName + ")\n"))
 	return nil
-}
-
-/**
- * Emits the code required to start a list.
- */
-func (g *Generator) StartWritingList(output io.Writer) {
-	output.Write([]byte("body.Write([]byte(\"[\"))\n"))
-}
-
-/**
- * Emits the code required to end a list.
- */
-func (g *Generator) EndWritingList(output io.Writer) {
-	output.Write([]byte("body.Write([]byte(\"]\"))\n"))
 }
 
 /**

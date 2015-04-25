@@ -1,0 +1,26 @@
+{{ $context := . }}
+
+func (svc *{{$.ClientName}}) {{.OpName}}({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) ( {{ range $i, $ot := .OpType.OutputTypes }} {{ ( $context.TypeLib.Signature $ot ) }}, {{end}} error) {
+	resp, err := svc.Send{{.OpName}}Request({{ range $i, $t := $context.OpType.InputTypes}}arg{{$i}}, {{end}})
+}
+
+func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) (*http.Response, error) {
+	var body *bytes.Buffer = {{ if eq .OpType.NumInputs 0 }}nil{{else}}bytes.NewBuffer(nil){{(.MarkTypes .OpType.InputTypes)}}{{end}}
+
+{{ if eq .OpType.NumInputs 1 }}
+	{{ $argType := ( index .OpType.InputTypes 0 ) }}
+	Write_{{.IOMethodForType $argType}}(body, arg0)
+{{ else if gt .OpType.NumInputs 1 }}
+	body.Write([]byte("["))
+	{{ range $index, $param := .OpType.InputTypes }}
+	Write_{{$context.IOMethodForType $param}}(body, arg{{$index}})
+	{{ end }}
+	body.Write([]byte("]"))
+{{ end }}
+
+	httpreq, err := http.NewRequest("{{.OpMethod}}", "{{.OpEndpoint}}", body)
+	if err != nil {
+		return nil, err
+	}
+	return svc.PrepareAndSendRequest(httpreq)
+}

@@ -1,0 +1,3 @@
+
+func (svc *{{$.ClientName}}) {{.OpName}}({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) 
+( {{ range $i, $ot := .OpType.OutputTypes }} {{ ( .TypeLib.Signature $ot ) }}, {{end}} error) {

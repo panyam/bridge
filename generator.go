@@ -20,7 +20,7 @@ type Generator interface {
 	 * 3. Sends the transport level request
 	 * 4. Gets a response from the transport level and returns it
 	 */
-	EmitSendRequestMethod(writer io.Writer, opName string, opType *FunctionTypeData, argPrefix string) error
+	EmitServiceCallMethod(writer io.Writer, opName string, opType *FunctionTypeData, argPrefix string) error
 
 	/**
 	 * Emits the writer for a particular type and in the process returns via the

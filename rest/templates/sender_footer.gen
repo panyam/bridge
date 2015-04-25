@@ -1,7 +1,0 @@
-	httpreq, err := http.NewRequest("{{.OpMethod}}", "{{.OpEndpoint}}", body)
-	if err != nil {
-		return nil, err
-	}
-	return svc.PrepareAndSendRequest(httpreq)
-}
-
