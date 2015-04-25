@@ -2,6 +2,17 @@
 
 func (svc *{{$.ClientName}}) {{.OpName}}({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) ( {{ range $i, $ot := .OpType.OutputTypes }} {{ ( $context.TypeLib.Signature $ot ) }}, {{end}} error) {
 	resp, err := svc.Send{{.OpName}}Request({{ range $i, $t := $context.OpType.InputTypes}}arg{{$i}}, {{end}})
+	{{ range $i, $ot := .OpType.OutputTypes }}
+	var outarg{{$i}} {{ ( $context.TypeLib.Signature $ot ) }}
+	{{end}}
+	var transport_error error = nil
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if err == nil && resp.Body != nil {
+		// process the responses
+	}
+	return {{ range $i, $t := $context.OpType.OutputTypes}}outarg{{$i}}, {{end}} transport_error
 }
 
 func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) (*http.Response, error) {

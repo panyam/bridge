@@ -146,16 +146,6 @@ func (g *Generator) IOMethodForType(t *bridge.Type) string {
 }
 
 /**
- * Emits the code required to invoke the serializer of an object of a given
- * type.
- */
-func (g *Generator) EmitObjectWriterCall(output io.Writer, key interface{}, argName string, argType *bridge.Type) error {
-	callString := g.IOMethodForType(argType)
-	output.Write([]byte("Write_" + callString + "(body, " + argName + ")\n"))
-	return nil
-}
-
-/**
  * Emits the writer for a particular type and in the process returns via the
  * recorder the types that for which writers must or will be defined.
  */
