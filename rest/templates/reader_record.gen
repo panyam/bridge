@@ -1,0 +1,32 @@
+	{{$context := .}}
+	var key string
+	SkipSpaces(reader)
+	if !NextIf(reader, '{') {
+		return errors.New("Expected ':'")
+	}
+	for {
+		if err := Read_string(reader, &key) ; err != nil {
+			return err
+		}
+		SkipSpaces(reader)
+		if !NextIf(reader, ':') {
+			return errors.New("Expected ':'")
+		}
+		switch key {
+		{{ range $index, $field := .Type.TypeData.Fields }}{{ if not $field.Type.IsFunctionType }} 
+		{{ if eq $field.Name "" }}
+		case "{{$field.Type.LeafType.Name}}": Read_{{$context.Gen.IOMethodForType $field.Type}}(reader, &arg.{{$field.Type.LeafType.Name}})
+		{{ else }}
+		case "{{$field.Name}}": Read_{{$context.Gen.IOMethodForType $field.Type}}(reader, &arg.{{$field.Name}})
+		{{ end }}
+		{{ end }}
+		{{ end }}
+		}
+		// check which 
+		SkipSpaces(reader)
+		if NextIf(reader, '}') {
+			return nil
+		} else if !NextIf(reader, ',') {
+			return errors.New("Expected comma")
+		}
+	}

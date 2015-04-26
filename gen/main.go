@@ -147,7 +147,7 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 	writers_file.Close()
 
 	readers_file := OpenFile("./restclient/readers.go")
-	EmitFileHeader(readers_file, generator.ClientPackageName, allUniqueTypes, typeLibrary, "bufio")
+	EmitFileHeader(readers_file, generator.ClientPackageName, allUniqueTypes, typeLibrary, "bufio", "errors")
 	readers_file.Write(readersBuff.Bytes())
 	readers_file.Close()
 }

@@ -1,5 +1,3 @@
-
-	lookAhead := make(byte[], 1, 1)
 	var key string
 	var value {{.Gen.TypeLib.Signature .Type.TypeData.ValueType}}
 	EnsureOCurly(reader)
@@ -11,7 +9,7 @@
 		if !NextIf(reader, ':') {
 			return errors.New("Expected ':'")
 		}
-		err := Read_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(reader, value)
+		err := Read_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(reader, value)
 		if err != nil {
 			return err
 		}

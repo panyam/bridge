@@ -50,5 +50,7 @@ func (svc *{{$.ClientName}}) Parse{{.OpName}}Response(resp *http.Response{{ rang
 	}
 	{{ end }}
 	return EnsureCSq(reader)
+{{ else }}
+	return nil
 {{ end }}
 }
