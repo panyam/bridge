@@ -23,8 +23,12 @@ type Generator interface {
 	EmitServiceCallMethod(writer io.Writer, opName string, opType *FunctionTypeData, argPrefix string) error
 
 	/**
-	 * Emits the writer for a particular type and in the process returns via the
-	 * recorder the types that for which writers must or will be defined.
+	 * Emits the writer for a particular type.
 	 */
 	EmitTypeWriter(writer io.Writer, argType *Type) error
+
+	/**
+	 * Emits the reader for a particular type.
+	 */
+	EmitTypeReader(writer io.Writer, argType *Type) error
 }

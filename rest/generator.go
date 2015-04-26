@@ -146,8 +146,7 @@ func (g *Generator) IOMethodForType(t *bridge.Type) string {
 }
 
 /**
- * Emits the writer for a particular type and in the process returns via the
- * recorder the types that for which writers must or will be defined.
+ * Emits the writer for a particular type.
  */
 func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type) error {
 	tmplType := ""
@@ -175,6 +174,37 @@ func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type) error
 	bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_header.gen", context)
 	bridge.RenderTemplate(writer, tmplPath, context)
 	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_footer.gen", context)
+}
+
+/**
+ * Emits the reader for a particular type.
+ */
+func (g *Generator) EmitTypeReader(writer io.Writer, argType *bridge.Type) error {
+	tmplType := ""
+	switch argType.TypeClass {
+	case bridge.ListType:
+		tmplType = "list"
+	case bridge.MapType:
+		tmplType = "map"
+	case bridge.ReferenceType:
+		tmplType = "ref"
+	case bridge.RecordType:
+		tmplType = "record"
+	case bridge.AliasType:
+		tmplType = "alias"
+	case bridge.NamedType:
+		// dont write named types - they should be supplied by as common utils?
+		return nil
+	}
+	if tmplType == "" {
+		log.Println("Unknown type: ", argType)
+		panic(nil)
+	}
+	tmplPath := fmt.Sprintf("%s/reader_%s.gen", g.TemplatesDir, tmplType)
+	context := map[string]interface{}{"Gen": g, "Type": argType}
+	bridge.RenderTemplate(writer, g.TemplatesDir+"/reader_header.gen", context)
+	bridge.RenderTemplate(writer, tmplPath, context)
+	return bridge.RenderTemplate(writer, g.TemplatesDir+"/reader_footer.gen", context)
 }
 
 /**

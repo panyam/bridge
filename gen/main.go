@@ -117,13 +117,14 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 		}
 	}
 	ops_file := OpenFile("./restclient/ops.go")
-	EmitFileHeader(ops_file, generator.ClientPackageName, uniqueTypes, typeLibrary, "net/http", "bytes")
+	EmitFileHeader(ops_file, generator.ClientPackageName, uniqueTypes, typeLibrary, "net/http", "bytes", "bufio")
 	ops_file.Write(opsBuff.Bytes())
 	ops_file.Close()
 
 	// Write the writers for each of the unique types and any other unique type
 	// those ones surface
 	writersBuff := bytes.NewBuffer(nil)
+	readersBuff := bytes.NewBuffer(nil)
 	var allUniqueTypes []*bridge.Type
 	for len(uniqueTypes) > 0 {
 		allUniqueTypes = append(allUniqueTypes, uniqueTypes...)
@@ -131,16 +132,24 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 		uniqueTypes = make([]*bridge.Type, 0, 100)
 		for _, t := range savedUniqueTypes {
 			generator.EmitTypeWriter(writersBuff, t)
+			generator.EmitTypeReader(readersBuff, t)
 		}
 	}
+	/**
 	log.Println("AllUniqueTypes: ")
 	for _, t := range allUniqueTypes {
 		log.Println("Wrote: ", t)
 	}
+	*/
 	writers_file := OpenFile("./restclient/writers.go")
 	EmitFileHeader(writers_file, generator.ClientPackageName, allUniqueTypes, typeLibrary, "io")
 	writers_file.Write(writersBuff.Bytes())
 	writers_file.Close()
+
+	readers_file := OpenFile("./restclient/readers.go")
+	EmitFileHeader(readers_file, generator.ClientPackageName, allUniqueTypes, typeLibrary, "bufio")
+	readers_file.Write(readersBuff.Bytes())
+	readers_file.Close()
 }
 
 /**

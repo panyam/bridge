@@ -1,0 +1,25 @@
+
+	lookAhead := make(byte[], 1, 1)
+	var key string
+	var value {{.Gen.TypeLib.Signature .Type.TypeData.ValueType}}
+	EnsureOCurly(reader)
+	for {
+		if err := Read_string(reader, &key) ; err != nil {
+			return err
+		}
+		SkipSpaces(reader)
+		if !NextIf(reader, ':') {
+			return errors.New("Expected ':'")
+		}
+		err := Read_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(reader, value)
+		if err != nil {
+			return err
+		}
+		arg[key] = value
+		SkipSpaces(reader)
+		if NextIf(reader, '}') {
+			return nil
+		} else if !NextIf(reader, ',') {
+			return errors.New("Expected comma")
+		}
+	}

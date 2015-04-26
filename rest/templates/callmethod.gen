@@ -1,23 +1,23 @@
 {{ $context := . }}
 
-func (svc *{{$.ClientName}}) {{.OpName}}({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) ( {{ range $i, $ot := .OpType.OutputTypes }} {{ ( $context.TypeLib.Signature $ot ) }}, {{end}} error) {
-	resp, err := svc.Send{{.OpName}}Request({{ range $i, $t := $context.OpType.InputTypes}}arg{{$i}}, {{end}})
+func (svc *{{$.ClientName}}) {{.OpName}}({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) ({{ range $i, $ot := .OpType.OutputTypes }}{{ ( $context.TypeLib.Signature $ot ) }}, {{end}}error) {
+	resp, trans_error := svc.Send{{.OpName}}Request({{ range $i, $t := $context.OpType.InputTypes}}arg{{$i}}, {{end}})
 	{{ range $i, $ot := .OpType.OutputTypes }}
 	var outarg{{$i}} {{ ( $context.TypeLib.Signature $ot ) }}
 	{{end}}
-	var transport_error error = nil
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
+	if trans_error == nil {
+		if resp != nil && resp.Body != nil {
+			defer resp.Body.Close()
+			// process the responses
+		}
 	}
-	if err == nil && resp.Body != nil {
-		// process the responses
-	}
-	return {{ range $i, $t := $context.OpType.OutputTypes}}outarg{{$i}}, {{end}} transport_error
+	trans_error = svc.Parse{{.OpName}}Response(resp{{ range $i, $ot := .OpType.OutputTypes }}, &outarg{{$i}}{{end}})
+	return {{ range $i, $t := $context.OpType.OutputTypes}}outarg{{$i}}, {{end}} trans_error 
 }
 
+// Create a http request for {{.OpName}}, send it and get back a http response
 func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{ .TypeLib.TypeListSignature .OpType.InputTypes "arg%d" }}) (*http.Response, error) {
 	var body *bytes.Buffer = {{ if eq .OpType.NumInputs 0 }}nil{{else}}bytes.NewBuffer(nil){{(.MarkTypes .OpType.InputTypes)}}{{end}}
-
 {{ if eq .OpType.NumInputs 1 }}
 	{{ $argType := ( index .OpType.InputTypes 0 ) }}
 	Write_{{.IOMethodForType $argType}}(body, arg0)
@@ -34,4 +34,21 @@ func (svc *{{$.ClientName}}) Send{{.OpName}}Request({{ .TypeLib.TypeListSignatur
 		return nil, err
 	}
 	return svc.PrepareAndSendRequest(httpreq)
+}
+
+// Process the http response for {{.OpName}} and return one or more appropriate response objects
+func (svc *{{$.ClientName}}) Parse{{.OpName}}Response(resp *http.Response{{ range $i, $t := .OpType.OutputTypes }}, arg{{$i}} *{{$context.TypeLib.Signature $t}}{{end}}) error {
+	reader := bufio.NewReader(resp.Body)
+{{ if eq .OpType.NumOutputs 1 }}
+	{{ $argType := ( index .OpType.OutputTypes 0 ) }}
+	return Read_{{.IOMethodForType $argType}}(reader, arg0)
+{{ else if gt .OpType.NumOutputs 1 }}
+	EnsureOSq(reader)
+	{{ range $index, $param := .OpType.OutputTypes }}
+	if err := Read_{{$context.IOMethodForType $param}}(reader, arg{{$index}}) ; err != nil {
+		return err
+	}
+	{{ end }}
+	return EnsureCSq(reader)
+{{ end }}
 }

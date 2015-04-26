@@ -4,10 +4,9 @@
 	{{ range $index, $field := .Type.TypeData.Fields }}{{ if not $field.Type.IsFunctionType }} 
 		{{ if not $startCommas }} {{$startCommas := true}}
 		{{ else }} writer.Write([]byte(",")) {{ end }}
-		writer.Write([]byte("\""))
-		{{ if eq $field.Name "" }}writer.Write([]byte("{{$field.Type.LeafType.Name}}"))
-		{{ else }}writer.Write([]byte("{{$field.Name}}")){{ end }}
-		writer.Write([]byte("\": "))
+		{{ if eq $field.Name "" }}Write_string(writer, "{{$field.Type.LeafType.Name}}")
+		{{ else }}Write_string(writer, "{{$field.Name}}"){{ end }}
+		writer.Write([]byte(":"))
 		{{ if eq $field.Name "" }}
 		Write_{{$context.Gen.IOMethodForType $field.Type}}(writer, arg.{{$field.Type.LeafType.Name}})
 		{{else}}

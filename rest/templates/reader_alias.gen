@@ -1,0 +1,2 @@
+
+return Read_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(reader, arg) {{ ( .Gen.MarkType .Type.TypeData.TargetType ) }}
