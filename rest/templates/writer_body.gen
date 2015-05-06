@@ -1,0 +1,12 @@
+{{ $context := . }}
+{{ if .Type.IsListType }}
+{{template "writer_list.gen" . }}
+{{ else if .Type.IsMapType }}
+{{template "writer_map.gen" . }}
+{{ else if .Type.IsReferenceType }}
+{{template "writer_ref.gen" . }}
+{{ else if .Type.IsAliasType }}
+{{template "writer_alias.gen" . }}
+{{ else if .Type.IsRecordType }}
+{{template "writer_record.gen" . }}
+{{ end }}

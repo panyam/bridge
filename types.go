@@ -50,6 +50,21 @@ func (t *Type) TypeClassString() string {
 	return ""
 }
 
+/**
+ * Tells if the value will be passed by value or by reference.
+ */
+func (t *Type) IsValueType() bool {
+	if t.TypeClass == ReferenceType || t.TypeClass == ListType ||
+		t.TypeClass == MapType || t.TypeClass == FunctionType {
+		return false
+	} else if t.TypeClass == AliasType {
+		return t.AsAliasType().TargetType.IsValueType()
+	} else if t.TypeClass == NamedType || t.TypeClass == RecordType {
+		return true
+	}
+	return false
+}
+
 func (t *Type) IsNullType() bool       { return t.TypeClass == NullType }
 func (t *Type) IsUnresolvedType() bool { return t.TypeClass == UnresolvedType }
 func (t *Type) IsNamedType() bool      { return t.TypeClass == NamedType }

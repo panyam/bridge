@@ -4,11 +4,11 @@
 		SkipSpaces(reader)
 		// read value
 		var value {{.Gen.TypeLib.Signature .Type.TypeData.TargetType}}
-		err := Read_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(reader, value)
+		err := Read_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(reader, &value)
 		if err != nil {
 			return err
 		}
-		arg = append(arg, value)
+		*arg = append(*arg, value)
 		SkipSpaces(reader)
 		if NextIf(reader, ']') {
 			return nil

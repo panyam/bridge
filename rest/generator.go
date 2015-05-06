@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/panyam/bridge"
 	"io"
+	"io/ioutil"
 	"log"
 	"text/template"
 )
@@ -68,6 +69,15 @@ func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary,
 		ClientPackageName: "restclient",
 		ClientSuffix:      "Client",
 		TransportRequest:  "*http.Request",
+	}
+	// load all templates from this dir
+	fileinfos, err := ioutil.ReadDir(templatesDir)
+	if err != nil {
+		panic(err)
+	}
+	for _, fi := range fileinfos {
+		log.Println("Loading template: ", fi.Name())
+		bridge.LoadTemplate(templatesDir + "/" + fi.Name())
 	}
 	return &out
 }
@@ -149,31 +159,34 @@ func (g *Generator) IOMethodForType(t *bridge.Type) string {
  * Emits the writer for a particular type.
  */
 func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type) error {
-	tmplType := ""
-	switch argType.TypeClass {
-	case bridge.ListType:
-		tmplType = "list"
-	case bridge.MapType:
-		tmplType = "map"
-	case bridge.ReferenceType:
-		tmplType = "ref"
-	case bridge.RecordType:
-		tmplType = "record"
-	case bridge.AliasType:
-		tmplType = "alias"
-	case bridge.NamedType:
-		// dont write named types - they should be supplied by as common utils?
-		return nil
-	}
-	if tmplType == "" {
-		log.Println("Unknown type: ", argType)
-		panic(nil)
-	}
-	tmplPath := fmt.Sprintf("%s/writer_%s.gen", g.TemplatesDir, tmplType)
 	context := map[string]interface{}{"Gen": g, "Type": argType}
-	bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_header.gen", context)
-	bridge.RenderTemplate(writer, tmplPath, context)
-	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_footer.gen", context)
+	/*
+		tmplType := ""
+		switch argType.TypeClass {
+		case bridge.ListType:
+			tmplType = "list"
+		case bridge.MapType:
+			tmplType = "map"
+		case bridge.ReferenceType:
+			tmplType = "ref"
+		case bridge.RecordType:
+			tmplType = "record"
+		case bridge.AliasType:
+			tmplType = "alias"
+		case bridge.NamedType:
+			// dont write named types - they should be supplied by as common utils?
+			return nil
+		}
+		if tmplType == "" {
+			log.Println("Unknown type: ", argType)
+			panic(nil)
+		}
+		tmplPath := fmt.Sprintf("%s/writer_%s.gen", g.TemplatesDir, tmplType)
+		bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_header.gen", context)
+		bridge.RenderTemplate(writer, tmplPath, context)
+		return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_footer.gen", context)
+	*/
+	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer.gen", context)
 }
 
 /**

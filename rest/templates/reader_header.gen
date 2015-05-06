@@ -1,2 +1,2 @@
 {{ $context := . }}
-func Read_{{.Gen.IOMethodForType .Type}} (reader *bufio.Reader, arg {{.Gen.TypeLib.Signature .Type}}) error {
+func Read_{{.Gen.IOMethodForType .Type}} (reader *bufio.Reader, arg *{{.Gen.TypeLib.Signature .Type}}) error {

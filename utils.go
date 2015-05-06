@@ -252,6 +252,14 @@ func (parsedFile *ParsedFile) NodeToType(node ast.Node, typeLibrary ITypeLibrary
 	return nil
 }
 
+func LoadTemplate(templatePath string) (*template.Template, error) {
+	templ, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)
+	if err != nil {
+		panic(err)
+	}
+	return templ, nil
+}
+
 func RenderTemplate(writer io.Writer, templatePath string, context interface{}) error {
 	// TODO: Precompile and cache templates
 	templ, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)

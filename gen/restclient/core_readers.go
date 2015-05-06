@@ -118,14 +118,20 @@ func Read_string(reader *bufio.Reader, arg *string) error {
 	return nil
 }
 
-func Read_bool(reader *bufio.Reader, arg bool) error {
-	var err error
-	if arg {
-		_, err = reader.Read([]byte("true"))
-	} else {
-		_, err = reader.Read([]byte("false"))
+func Read_bool(reader *bufio.Reader, arg *bool) error {
+	token, err := ReadWhile(reader, func(b byte) bool { return b >= 'a' && b <= 'z' })
+	if err != nil {
+		return err
 	}
-	return err
+	tok := string(token)
+	if tok == "true" {
+		*arg = true
+	} else if tok == "false" {
+		*arg = false
+	} else {
+		return errors.New("Expected 'true' or 'false'")
+	}
+	return nil
 }
 
 func Read_int(reader *bufio.Reader, arg *int) error {
@@ -153,11 +159,10 @@ func Read_int64(reader *bufio.Reader, arg *int64) error {
 	return err
 }
 
-func Read_time_Time(reader *bufio.Reader, time time.Time) error {
-	bytes, err := time.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	_, err = reader.Read(bytes)
-	return err
+func Read_error(reader *bufio.Reader, err *error) error {
+	return nil
+}
+
+func Read_time_Time(reader *bufio.Reader, t *time.Time) error {
+	return nil
 }

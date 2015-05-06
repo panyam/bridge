@@ -9,11 +9,11 @@
 		if !NextIf(reader, ':') {
 			return errors.New("Expected ':'")
 		}
-		err := Read_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(reader, value)
+		err := Read_{{.Gen.IOMethodForType .Type.TypeData.ValueType}}(reader, &value)
 		if err != nil {
 			return err
 		}
-		arg[key] = value
+		(*arg)[key] = value
 		SkipSpaces(reader)
 		if NextIf(reader, '}') {
 			return nil

@@ -1,1 +1,5 @@
+{{ if .Type.TypeData.TargetType.IsValueType }}
+{{ ( .Gen.EmitTypeWriter writer .Type.TypeData.TargetType ) }}
+{{ else }}
 return Write_{{.Gen.IOMethodForType .Type.TypeData.TargetType}}(writer, *arg) {{ ( .Gen.MarkType .Type.TypeData.TargetType ) }}
+{{ end }}
