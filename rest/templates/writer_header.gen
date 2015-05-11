@@ -1,3 +1,1 @@
 func Write_{{.Gen.IOMethodForType .Type}} (writer io.Writer, arg {{.Gen.TypeLib.Signature .Type}}) error {
-{{ template "writer_body.gen" . }}
-}

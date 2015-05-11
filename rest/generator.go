@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/panyam/bridge"
@@ -82,43 +83,6 @@ func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary,
 	return &out
 }
 
-/**
- * Emits the class that acts as a client for the service.
- */
-func (g *Generator) EmitClientClass(writer io.Writer, serviceType *bridge.Type) error {
-	serviceTypeData, ok := serviceType.TypeData.(*bridge.RecordTypeData)
-	if !ok {
-		return errors.New("Can only classes for record/container types")
-	}
-	g.ServiceType = serviceType
-	g.ServiceName = serviceTypeData.Name
-
-	tmpl, err := template.New("client.gen").ParseFiles(g.TemplatesDir + "client.gen")
-	if err != nil {
-		panic(err)
-	}
-	err = tmpl.Execute(writer, g)
-	if err != nil {
-		panic(err)
-	}
-	return err
-}
-
-/**
- * For a given service operation, emits a method which:
- * 1. Has inputs the same as those of the underlying service operation,
- * 2. creates a transport level request
- * 3. Sends the transport level request
- * 4. Gets a response from the transport level and returns it
- */
-func (g *Generator) EmitServiceCallMethod(writer io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
-	g.OpName = opName
-	g.OpType = opType
-	g.OpMethod = "GET"
-	g.OpEndpoint = "http://hello.world/"
-	return bridge.RenderTemplate(writer, g.TemplatesDir+"/callmethod.gen", g)
-}
-
 func (g *Generator) IOMethodForType(t *bridge.Type) string {
 	switch typeData := t.TypeData.(type) {
 	case string:
@@ -156,37 +120,101 @@ func (g *Generator) IOMethodForType(t *bridge.Type) string {
 }
 
 /**
+ * Emits the class that captures all the methods for sendign service calls and
+ * receiving parsing the responses.
+ */
+func (g *Generator) EmitClientClass(writer io.Writer, serviceType *bridge.Type) error {
+	serviceTypeData, ok := serviceType.TypeData.(*bridge.RecordTypeData)
+	if !ok {
+		return errors.New("Can only classes for record/container types")
+	}
+	g.ServiceType = serviceType
+	g.ServiceName = serviceTypeData.Name
+
+	tmpl, err := template.New("client.gen").ParseFiles(g.TemplatesDir + "client.gen")
+	if err != nil {
+		panic(err)
+	}
+	err = tmpl.Execute(writer, g)
+	if err != nil {
+		panic(err)
+	}
+	return err
+}
+
+/**
+ * For a given service operation, emits a method which:
+ * 1. Has inputs the same as those of the underlying service operation,
+ * 2. creates a transport level request
+ * 3. Sends the transport level request
+ * 4. Gets a response from the transport level and returns it
+ */
+func (g *Generator) EmitServiceCallMethod(writer io.Writer, opName string, opType *bridge.FunctionTypeData, argPrefix string) error {
+	g.OpName = opName
+	g.OpType = opType
+	g.OpMethod = "GET"
+	g.OpEndpoint = "http://hello.world/"
+	return bridge.RenderTemplate(writer, g.TemplatesDir+"/callmethod.gen", g)
+}
+
+/**
  * Emits the writer for a particular type.
  */
 func (g *Generator) EmitTypeWriter(writer io.Writer, argType *bridge.Type) error {
+	// write the function header for the type
+	g.EmitTypeWriterHeader(writer, argType)
+
+	// write the function body for the type
+	g.EmitTypeWriterBody(writer, argType)
+
+	// write the footer for the type
+	return g.EmitTypeWriterFooter(writer, argType)
+}
+
+func (g *Generator) EmitTypeWriterHeader(writer io.Writer, argType *bridge.Type) error {
 	context := map[string]interface{}{"Gen": g, "Type": argType}
-	/*
-		tmplType := ""
-		switch argType.TypeClass {
-		case bridge.ListType:
-			tmplType = "list"
-		case bridge.MapType:
-			tmplType = "map"
-		case bridge.ReferenceType:
-			tmplType = "ref"
-		case bridge.RecordType:
-			tmplType = "record"
-		case bridge.AliasType:
-			tmplType = "alias"
-		case bridge.NamedType:
-			// dont write named types - they should be supplied by as common utils?
-			return nil
-		}
-		if tmplType == "" {
-			log.Println("Unknown type: ", argType)
-			panic(nil)
-		}
-		tmplPath := fmt.Sprintf("%s/writer_%s.gen", g.TemplatesDir, tmplType)
-		bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_header.gen", context)
-		bridge.RenderTemplate(writer, tmplPath, context)
-		return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_footer.gen", context)
-	*/
-	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer.gen", context)
+	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_header.gen", context)
+}
+
+func (g *Generator) TypeWriterBodyString(argType *bridge.Type) string {
+	buffer := bytes.NewBuffer(nil)
+	err := g.EmitTypeWriterBody(buffer, argType)
+	if err != nil {
+		buffer = bytes.NewBuffer(nil)
+		buffer.Write([]byte(err.Error()))
+	}
+	return string(buffer.Bytes())
+}
+
+func (g *Generator) EmitTypeWriterBody(writer io.Writer, argType *bridge.Type) error {
+	context := map[string]interface{}{"Gen": g, "Type": argType}
+	tmplType := ""
+	switch argType.TypeClass {
+	case bridge.ListType:
+		tmplType = "list"
+	case bridge.MapType:
+		tmplType = "map"
+	case bridge.ReferenceType:
+		tmplType = "ref"
+	case bridge.RecordType:
+		tmplType = "record"
+	case bridge.AliasType:
+		tmplType = "alias"
+	case bridge.NamedType:
+		// dont write named types - they should be supplied by as common utils?
+		return nil
+	}
+	if tmplType == "" {
+		log.Println("Unknown type: ", argType)
+		panic(nil)
+	}
+	tmplPath := fmt.Sprintf("%s/writer_%s.gen", g.TemplatesDir, tmplType)
+	return bridge.RenderTemplate(writer, tmplPath, context)
+}
+
+func (g *Generator) EmitTypeWriterFooter(writer io.Writer, argType *bridge.Type) error {
+	context := map[string]interface{}{"Gen": g, "Type": argType}
+	return bridge.RenderTemplate(writer, g.TemplatesDir+"/writer_footer.gen", context)
 }
 
 /**
