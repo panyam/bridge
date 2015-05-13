@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/panyam/bridge"
 	"io"
-	"io/ioutil"
 	"log"
 	"text/template"
 )
@@ -33,6 +32,8 @@ type Generator struct {
 	OpType            *bridge.FunctionTypeData
 	OpMethod          string
 	OpEndpoint        string
+	ExistingWriters   map[string]string
+	ExistingReaders   map[string]string
 
 	// Callbacks from the template to mark certain items in the code generation
 	TypeMarker func(types ...*bridge.Type)
@@ -70,15 +71,6 @@ func NewGenerator(bindings map[string]*HttpBinding, typeLib bridge.ITypeLibrary,
 		ClientPackageName: "restclient",
 		ClientSuffix:      "Client",
 		TransportRequest:  "*http.Request",
-	}
-	// load all templates from this dir
-	fileinfos, err := ioutil.ReadDir(templatesDir)
-	if err != nil {
-		panic(err)
-	}
-	for _, fi := range fileinfos {
-		log.Println("Loading template: ", fi.Name())
-		bridge.LoadTemplate(templatesDir + "/" + fi.Name())
 	}
 	return &out
 }

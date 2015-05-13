@@ -69,6 +69,20 @@ func OpenFile(path string) *os.File {
 func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Type) {
 	// Create the generator
 	generator := rest.NewGenerator(nil, typeLibrary, "../rest/templates/")
+	generator.ExistingWriters = map[string]string{
+		"time.Time": "restclient.Write_time_Time",
+		"string":    "restclient.Write_string",
+		"int":       "restclient.Write_int",
+		"int64":     "restclient.Write_int64",
+		"bool":      "restclient.Write_bool",
+	}
+	generator.ExistingReaders = map[string]string{
+		"time.Time": "restclient.Read_time_Time",
+		"string":    "restclient.Read_string",
+		"int":       "restclient.Read_int",
+		"int64":     "restclient.Read_int64",
+		"bool":      "restclient.Read_bool",
+	}
 
 	sigVisited := make(map[string]bool)
 	typeVisited := make(map[*bridge.Type]bool)
@@ -131,16 +145,18 @@ func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Ty
 		savedUniqueTypes := uniqueTypes
 		uniqueTypes = make([]*bridge.Type, 0, 100)
 		for _, t := range savedUniqueTypes {
-			generator.EmitTypeWriter(writersBuff, t)
-			generator.EmitTypeReader(readersBuff, t)
+			if _, ok := generator.ExistingWriters[typeLibrary.Signature(t)]; ok {
+				log.Println("Wont generate as Type Already Exists: ", typeLibrary.Signature(t))
+			} else {
+				generator.EmitTypeWriter(writersBuff, t)
+				generator.EmitTypeReader(readersBuff, t)
+			}
 		}
 	}
-	/**
 	log.Println("AllUniqueTypes: ")
 	for _, t := range allUniqueTypes {
-		log.Println("Wrote: ", t)
+		log.Println("Wrote: ", t, typeLibrary.Signature(t))
 	}
-	*/
 	writers_file := OpenFile("./restclient/writers.go")
 	EmitFileHeader(writers_file, generator.ClientPackageName, allUniqueTypes, typeLibrary, "io")
 	writers_file.Write(writersBuff.Bytes())
