@@ -1,5 +1,5 @@
-	{{$context := .}}
-	var key string
+	// TODO: Optimize this so that if a struct has NO data then just send out nil
+	{{$context := .}}var key string
 	SkipSpaces(reader)
 	if !NextIf(reader, '{') {
 		return errors.New("Expected ':'")
