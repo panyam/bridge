@@ -36,14 +36,9 @@ func (s *TestSuite) TestNewTypeLibrary(c *C) {
 	c.Assert(ts, Not(IsNil))
 }
 
-func (s *TestSuite) TestNewType(c *C) {
-	t := NewType(BasicType, nil)
-	c.Assert(t, Not(IsNil))
-}
-
-func (s *TestSuite) TestAddBasicType(c *C) {
+func (s *TestSuite) TestAddNamedType(c *C) {
 	ts := NewTypeLibrary()
-	t := NewType(BasicType, nil)
+	t := NewType(NamedType, nil)
 	t = ts.AddType("", "int64", t)
 	t2 := ts.GetType("", "int64")
 	c.Assert(t2, Not(IsNil))
