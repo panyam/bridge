@@ -23,7 +23,10 @@ func main() {
 		log.Println("Service required")
 	}
 
+	// TODO: Get files to parse from some spec file
 	_, typeLibrary := ParseFiles(flag.Args())
+
+	// TODO: Get service package from spec file
 	serviceType := typeLibrary.GetType("core", serviceName)
 	CreateClientForType(typeLibrary, serviceType)
 }
@@ -68,6 +71,7 @@ func OpenFile(path string) *os.File {
 
 func CreateClientForType(typeLibrary bridge.ITypeLibrary, serviceType *bridge.Type) {
 	// Create the generator
+	// TODO: Get templates and existing readers/writers from spec file
 	generator := rest.NewGenerator(nil, typeLibrary, "../rest/templates/")
 	generator.ExistingWriters = map[string]string{
 		"time.Time": "restclient.Write_time_Time",
