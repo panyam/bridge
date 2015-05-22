@@ -45,25 +45,6 @@ func NewTypeLibrary() *TypeLibrary {
 
 	log.Println("Creating new type library... ")
 	out.types = make(map[string]*Type)
-
-	// add some basic types
-	out.AddGlobalType("error")
-	out.AddGlobalType("string")
-	out.AddGlobalType("float")
-	out.AddGlobalType("float32")
-	out.AddGlobalType("float64")
-	out.AddGlobalType("bool")
-	out.AddGlobalType("byte")
-	out.AddGlobalType("int")
-	out.AddGlobalType("int8")
-	out.AddGlobalType("int16")
-	out.AddGlobalType("int32")
-	out.AddGlobalType("int64")
-	out.AddGlobalType("uint")
-	out.AddGlobalType("uint8")
-	out.AddGlobalType("uint16")
-	out.AddGlobalType("uint32")
-	out.AddGlobalType("uint64")
 	return &out
 }
 

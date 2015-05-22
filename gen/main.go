@@ -12,6 +12,28 @@ import (
 	"strings"
 )
 
+func NewGoTypeLibrary() bridge.ITypeLibrary {
+	typeLibrary := bridge.NewTypeLibrary()
+	// add some basic types
+	typeLibrary.AddGlobalType("error")
+	typeLibrary.AddGlobalType("string")
+	typeLibrary.AddGlobalType("float")
+	typeLibrary.AddGlobalType("float32")
+	typeLibrary.AddGlobalType("float64")
+	typeLibrary.AddGlobalType("bool")
+	typeLibrary.AddGlobalType("byte")
+	typeLibrary.AddGlobalType("int")
+	typeLibrary.AddGlobalType("int8")
+	typeLibrary.AddGlobalType("int16")
+	typeLibrary.AddGlobalType("int32")
+	typeLibrary.AddGlobalType("int64")
+	typeLibrary.AddGlobalType("uint")
+	typeLibrary.AddGlobalType("uint8")
+	typeLibrary.AddGlobalType("uint16")
+	typeLibrary.AddGlobalType("uint32")
+	typeLibrary.AddGlobalType("uint64")
+}
+
 func main() {
 	var serviceName, operation string
 	flag.StringVar(&serviceName, "service", "", "The service whose methods are to be extracted and for whome binding code is to be generated")
@@ -32,7 +54,7 @@ func main() {
 }
 
 func ParseFiles(fileNames []string) (map[string]*bridge.ParsedFile, bridge.ITypeLibrary) {
-	typeLibrary := bridge.NewTypeLibrary()
+	typeLibrary := NewGoTypeLibrary()
 	parsedFiles := make(map[string]*bridge.ParsedFile)
 	for _, srcFile := range fileNames {
 		pf, err := bridge.NewParsedFile(srcFile)

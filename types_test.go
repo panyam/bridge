@@ -42,3 +42,29 @@ func (s *TestSuite) TestNewType(c *C) {
 	c.Assert(cls, Equals, t.TypeClass)
 	c.Assert(d, Equals, t.TypeData)
 }
+
+func (s *TestSuite) TestNewTypeLibrary(c *C) {
+	tl := NewTypeLibrary()
+	c.Assert(tl, Not(IsNil))
+	tl.AddGlobalType("test")
+	c.Assert(tl.GetGlobalType("test"), Not(IsNil))
+}
+
+func (s *TestSuite) TestAddExistingType(c *C) {
+	tl := NewTypeLibrary()
+	c.Assert(tl, Not(IsNil))
+	tl.AddGlobalType("test")
+	t1 := tl.GetGlobalType("test")
+
+	tl.AddGlobalType("test")
+	t2 := tl.GetGlobalType("test")
+	c.Assert(t1, Equals, t2)
+}
+
+func (s *TestSuite) TestAddPackage(c *C) {
+	tl := NewTypeLibrary()
+	shortName := tl.AddPackage("a/b/c/d")
+	c.Assert(shortName, Equals, "d")
+	c.Assert(shortName, Equals, tl.ShortNameForPackage("a/b/c/d"))
+	c.Assert("a/b/c/d", Equals, tl.PackageByShortName(shortName))
+}

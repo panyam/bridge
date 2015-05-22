@@ -31,11 +31,6 @@ func (s *TestSuite) TearDownTest(c *C) {
 
 // Tests begin
 
-func (s *TestSuite) TestNewTypeLibrary(c *C) {
-	ts := NewTypeLibrary()
-	c.Assert(ts, Not(IsNil))
-}
-
 func (s *TestSuite) TestAddNamedType(c *C) {
 	ts := NewTypeLibrary()
 	t := NewType(NamedType, nil)
