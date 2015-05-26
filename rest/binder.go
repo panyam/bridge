@@ -2,7 +2,7 @@ package rest
 
 import (
 	// "github.com/gorilla/mux"
-	"github.com/panyam/bridge"
+	// "github.com/panyam/bridge"
 	"log"
 	"net/http"
 	"reflect"
@@ -83,6 +83,7 @@ func NewHttpBinding(url string, methods []string, service interface{}, operation
  *
  * 	/path1/path2/{param1:Request.Field1}/path3/{param2:Request.Field2}/
  */
+/*
 func (hb *HttpBinding) ExtractRequest(request *http.Request) (*bridge.ServiceOperation, error) {
 	param := reflect.New(hb.RequestType)
 	out := bridge.ServiceOperation{Method: hb.Method, RequestParam: param}
@@ -90,12 +91,14 @@ func (hb *HttpBinding) ExtractRequest(request *http.Request) (*bridge.ServiceOpe
 	// variables = mux.Vars(request)
 	return &out, nil
 }
+*/
 
 type HttpInputBinder struct {
 	// Methods that are ok for this
 	Bindings []*HttpBinding
 }
 
+/*
 func (h *HttpInputBinder) ExtractInput(transportRequest interface{}) (*bridge.ServiceOperation, error) {
 	request := transportRequest.(*http.Request)
 	binding := h.MatchBinding(request)
@@ -108,6 +111,7 @@ func (h *HttpInputBinder) ExtractInput(transportRequest interface{}) (*bridge.Se
 	// extract request from binding
 	return binding.ExtractRequest(request)
 }
+*/
 
 func (h *HttpInputBinder) MatchBinding(request *http.Request) *HttpBinding {
 	// TODO: Use a Trie to store matches based on prefixes
